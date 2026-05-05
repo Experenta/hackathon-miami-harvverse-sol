@@ -3,19 +3,6 @@ document_id: PRD-HARVVERSE-SOLANA-X402-CONVEX
 title: Harvverse Technical PRD - Solana Role Registry, Lot Marketplace, Convex Backend, x402 Agent Gate
 version: 1.0
 date: 2026-05-05
-status: URGENT - implementation PRD for hackathon build
-owners:
-    product: Jorge
-    architecture: Claudio
-    mobile: Jesus
-    backend: Sheyla
-    solana_program: Practicante
-source_context:
-    - URGENT/HARVVERSE_DUAL_TRACK_PIVOT_STRATEGY.md
-    - URGENT/EasyAMobileTrack.md
-    - URGENT/CoinbasexAWSAgenticHackathon.md
-    - ReadFiles/03_BLINDED_DATA.md
-    - HVPLAN-ZAF-L02-2026.md
 external_references:
     - https://builder.aws.com/content/38fLQk6zKRfLnaUNzcLPsUexUlZ/monetize-any-http-application-with-x402-and-cloudfront-lambdaedge
     - https://aws.amazon.com/blogs/industries/x402-and-agentic-commerce-redefining-autonomous-payments-in-financial-services/
@@ -2256,17 +2243,17 @@ Fallback:
 
 ## 21. Open Technical Decisions
 
-| Decision          | Recommendation                                  | Reason                                             |
-| ----------------- | ----------------------------------------------- | -------------------------------------------------- |
-| Solana network    | Devnet                                          | Compatible with hackathon demos and faucet funding |
-| x402 network      | Base Sepolia                                    | Coinbase/AWS track alignment and testnet safety    |
-| x402 scheme       | exact                                           | Simple fixed-price paid data endpoint              |
-| x402 gateway      | API Gateway + Lambda if Lambda@Edge is too slow | Faster implementation while preserving AWS proof   |
-| Backend           | Convex                                          | User requested; good fit for app state and media   |
-| Role mutability   | Immutable for hackathon                         | Simpler routing and contract logic                 |
-| Lot media         | Convex storage                                  | Solana should store hashes only                    |
+| Decision          | Recommendation                                   | Reason                                             |
+| ----------------- | ------------------------------------------------ | -------------------------------------------------- |
+| Solana network    | Devnet                                           | Compatible with hackathon demos and faucet funding |
+| x402 network      | Base Sepolia                                     | Coinbase/AWS track alignment and testnet safety    |
+| x402 scheme       | exact                                            | Simple fixed-price paid data endpoint              |
+| x402 gateway      | API Gateway + Lambda if Lambda@Edge is too slow  | Faster implementation while preserving AWS proof   |
+| Backend           | Convex                                           | User requested; good fit for app state and media   |
+| Role mutability   | Immutable for hackathon                          | Simpler routing and contract logic                 |
+| Lot media         | Convex storage                                   | Solana should store hashes only                    |
 | AI payment budget | Team-funded demo wallet, max $0.01 per tool call | Prevent accidental spend and avoid user custody    |
-| Escrow            | Receipt-only for P0                             | Real token escrow is P2                            |
+| Escrow            | Receipt-only for P0                              | Real token escrow is P2                            |
 
 ## 22. Testing Requirements
 
