@@ -1,0 +1,11 @@
+{
+  "idl": "./programs/anchor/target/idl/vault.json",
+  "scripts": {
+    "js": [
+      {
+        "from": "@codama/renderers-js",
+        "args": ["./packages/solana-client/src/generated/vault"]
+      }
+    ]
+  }
+}

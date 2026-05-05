@@ -1,3 +1,10 @@
 # Native
 
-A [react-native](https://reactnative.dev/) app built using [expo](https://docs.expo.dev/)
+Expo React Native app based on `mobile/kit-expo-minimal`, with Solana Kit and Mobile Wallet Adapter.
+
+```bash
+pnpm --filter native start
+pnpm --filter native android
+pnpm --filter native android:build
+pnpm --filter native lint:check
+```

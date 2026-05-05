@@ -2,16 +2,114 @@
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
   "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
     "build": {
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "!README.md"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "out/**"]
+    },
+    "@repo/solana-client#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "!README.md"],
+      "outputs": []
+    },
+    "native#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "!README.md"],
+      "outputs": []
+    },
+    "typecheck": {
+      "dependsOn": ["transit"],
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", ".env*"],
+      "outputs": []
+    },
+    "lint": {
+      "inputs": ["$TURBO_DEFAULT$", "eslint.config.*"],
+      "outputs": []
+    },
+    "lint:fix": {
+      "cache": false
+    },
+    "format:check": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "**/*.{ts,tsx,js,jsx,json,md,css,mjs,cjs}",
+        "!src/generated/**"
+      ],
+      "outputs": []
+    },
+    "format": {
+      "cache": false
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "lint": {},
+    "start": {
+      "cache": false,
+      "persistent": true
+    },
+    "web": {
+      "cache": false,
+      "persistent": true
+    },
+    "android": {
+      "cache": false
+    },
+    "ios": {
+      "cache": false
+    },
+    "android:build": {
+      "cache": false
+    },
+    "doctor": {
+      "cache": false
+    },
+    "anchor:build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "Anchor.toml",
+        "Cargo.toml",
+        "Cargo.lock",
+        "programs/**/*.rs",
+        "programs/**/Cargo.toml",
+        "!target/**",
+        "!.anchor/**"
+      ],
+      "outputs": ["target/**", ".anchor/**"]
+    },
+    "anchor:test": {
+      "dependsOn": ["anchor:build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "Anchor.toml",
+        "Cargo.toml",
+        "Cargo.lock",
+        "programs/**/*.rs",
+        "programs/**/Cargo.toml",
+        "target/deploy/**/*.so"
+      ],
+      "outputs": []
+    },
+    "//#codegen:program": {
+      "dependsOn": ["@repo/anchor-program#anchor:build"],
+      "inputs": [
+        "codama.json",
+        "programs/anchor/target/idl/**/*.json",
+        "package.json",
+        "pnpm-lock.yaml"
+      ],
+      "outputs": ["packages/solana-client/src/generated/vault/**"]
+    },
+    "//#format:root": {
+      "cache": false
+    },
+    "//#format:check:root": {
+      "inputs": ["*.json", "*.md", "*.yml", "*.yaml", "programs/anchor/*.md"],
+      "outputs": []
+    },
     "clean": {
       "cache": false
     }

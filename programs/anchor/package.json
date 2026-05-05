@@ -1,0 +1,10 @@
+{
+  "name": "@repo/anchor-program",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "anchor:build": "PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor build",
+    "anchor:test": "PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor test --skip-deploy",
+    "clean": "rm -rf target .anchor"
+  }
+}
