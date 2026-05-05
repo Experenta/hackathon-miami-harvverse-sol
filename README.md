@@ -2,10 +2,10 @@
 
 Solana dApp Turborepo with:
 
-- `apps/web` - Next.js 16 web dApp using `@solana/kit`, wallet-standard, Tailwind, and the Anchor vault client.
+- `apps/web` - Next.js 16 web dApp using `@solana/kit`, wallet-standard, Tailwind, and the Anchor Hello World client.
 - `apps/native` - Expo React Native Android app using Solana Kit and Mobile Wallet Adapter.
-- `programs/anchor` - Anchor Rust workspace with the example vault program.
-- `packages/solana-client` - shared Solana helpers plus the Codama-generated Vault TypeScript client.
+- `programs/anchor` - Anchor Rust workspace with the example Hello World program.
+- `packages/solana-client` - shared Solana helpers plus the Codama-generated TypeScript client.
 - `packages/ui` - existing shared React Native UI package from the original starter.
 
 ## What Is Set Up Here
@@ -13,17 +13,17 @@ Solana dApp Turborepo with:
 This repository combines two Solana Foundation starter templates into one Turborepo:
 
 - `mobile/kit-expo-minimal` provides the Expo React Native mobile app, Solana Kit setup, Mobile Wallet Adapter provider, network selector, wallet connect/disconnect flow, message signing, transaction signing, and balance/network examples.
-- `kit/nextjs-anchor` provides the Anchor Vault program, Codama-generated TypeScript client, and a Next.js web dApp that can connect a browser wallet, show balances, request devnet airdrops, and deposit/withdraw SOL from the Vault PDA.
+- `kit/nextjs-anchor` provides the Anchor program, Codama-generated TypeScript client, and a Next.js web dApp that can connect a browser wallet, show balances, request airdrops, and send the Hello World instruction.
 
 The smart contract workflow is intentionally separate from the mobile app. Anchor code lives in `programs/anchor`, generated TypeScript program bindings live in `packages/solana-client`, and apps consume those bindings instead of deploying programs directly from the UI.
 
-The current Vault program is the template example program. After running `pnpm run setup`, Anchor synced this checkout to the local generated program keypair:
+The current Anchor program is a simple Hello World contract. After running `pnpm run setup`, Anchor synced this checkout to the local generated program keypair:
 
 ```txt
 Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP
 ```
 
-Devnet is the default Anchor provider cluster in this checkout. The shared Solana client and web app can also point at localnet, testnet, or mainnet, but Vault transactions only work on clusters where this exact program ID has been deployed.
+Devnet is the default Anchor provider cluster in this checkout. The shared Solana client and web app can also point at localnet, testnet, or mainnet, but program transactions only work on clusters where this exact program ID has been deployed.
 
 ## Setup
 
@@ -78,7 +78,7 @@ pnpm ci
 
 ## Program Workflow
 
-The included Vault program and generated client currently target:
+The included Hello World program and generated client currently target:
 
 ```txt
 Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP
@@ -92,4 +92,4 @@ pnpm codama:js
 pnpm build
 ```
 
-`pnpm codama:js` runs through Turbo and depends on the Anchor build, so it is the normal command for refreshing the generated TypeScript client after Rust program changes. The web app imports Vault instructions and Solana helpers from `@repo/solana-client`. The mobile app is scaffolded from `mobile/kit-expo-minimal` and is ready for Solana Kit/Mobile Wallet Adapter interactions against deployed programs.
+`pnpm codama:js` runs through Turbo and depends on the Anchor build, so it is the normal command for refreshing the generated TypeScript client after Rust program changes. The web app imports the Hello World instruction and Solana helpers from `@repo/solana-client`. The mobile app is scaffolded from `mobile/kit-expo-minimal` and is ready for Solana Kit/Mobile Wallet Adapter interactions against deployed programs.

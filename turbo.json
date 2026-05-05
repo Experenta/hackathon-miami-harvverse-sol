@@ -47,6 +47,10 @@
       "cache": false,
       "persistent": true
     },
+    "//#localnet:dev": {
+      "cache": false,
+      "persistent": true
+    },
     "start": {
       "cache": false,
       "persistent": true
@@ -92,6 +96,10 @@
         "target/deploy/**/*.so"
       ],
       "outputs": []
+    },
+    "anchor:deploy:local": {
+      "dependsOn": ["anchor:build"],
+      "cache": false
     },
     "//#codegen:program": {
       "dependsOn": ["@repo/anchor-program#anchor:build"],

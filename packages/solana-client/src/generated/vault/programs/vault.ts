@@ -17,18 +17,15 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
-  parseDepositInstruction,
-  parseWithdrawInstruction,
-  type ParsedDepositInstruction,
-  type ParsedWithdrawInstruction,
+  parseSayHelloInstruction,
+  type ParsedSayHelloInstruction,
 } from "../instructions";
 
 export const VAULT_PROGRAM_ADDRESS =
   "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP" as Address<"Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP">;
 
 export enum VaultInstruction {
-  Deposit,
-  Withdraw,
+  SayHello,
 }
 
 export function identifyVaultInstruction(
@@ -39,23 +36,12 @@ export function identifyVaultInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([242, 35, 198, 137, 82, 225, 242, 182]),
+        new Uint8Array([250, 163, 169, 119, 25, 42, 108, 31]),
       ),
       0,
     )
   ) {
-    return VaultInstruction.Deposit;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([183, 18, 70, 156, 148, 109, 161, 34]),
-      ),
-      0,
-    )
-  ) {
-    return VaultInstruction.Withdraw;
+    return VaultInstruction.SayHello;
   }
   throw new Error(
     "The provided instruction could not be identified as a vault instruction.",
@@ -64,31 +50,20 @@ export function identifyVaultInstruction(
 
 export type ParsedVaultInstruction<
   TProgram extends string = "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP",
-> =
-  | ({
-      instructionType: VaultInstruction.Deposit;
-    } & ParsedDepositInstruction<TProgram>)
-  | ({
-      instructionType: VaultInstruction.Withdraw;
-    } & ParsedWithdrawInstruction<TProgram>);
+> = {
+  instructionType: VaultInstruction.SayHello;
+} & ParsedSayHelloInstruction<TProgram>;
 
 export function parseVaultInstruction<TProgram extends string>(
   instruction: Instruction<TProgram> & InstructionWithData<ReadonlyUint8Array>,
 ): ParsedVaultInstruction<TProgram> {
   const instructionType = identifyVaultInstruction(instruction);
   switch (instructionType) {
-    case VaultInstruction.Deposit: {
+    case VaultInstruction.SayHello: {
       assertIsInstructionWithAccounts(instruction);
       return {
-        instructionType: VaultInstruction.Deposit,
-        ...parseDepositInstruction(instruction),
-      };
-    }
-    case VaultInstruction.Withdraw: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: VaultInstruction.Withdraw,
-        ...parseWithdrawInstruction(instruction),
+        instructionType: VaultInstruction.SayHello,
+        ...parseSayHelloInstruction(instruction),
       };
     }
     default:

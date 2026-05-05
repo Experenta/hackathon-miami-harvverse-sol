@@ -6,6 +6,7 @@ out
 coverage
 .next
 .expo
+expo-env.d.ts
 android
 ios
 programs/anchor/target

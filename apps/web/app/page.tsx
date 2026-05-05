@@ -7,7 +7,7 @@ import { useWallet } from "./lib/wallet/context";
 import { useBalance } from "./lib/hooks/use-balance";
 import { ellipsify, lamportsToSolString } from "@repo/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
-import { VaultCard } from "./components/vault-card";
+import { HelloWorldCard } from "./components/hello-world-card";
 import { GridBackground } from "./components/grid-background";
 import { ThemeToggle } from "./components/theme-toggle";
 import { ClusterSelect } from "./components/cluster-select";
@@ -82,7 +82,7 @@ export default function Home() {
         {/* Header */}
         <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <span className="text-sm font-semibold tracking-tight">
-            Solana Starter Kit
+            Solana Local Kit
           </span>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -98,16 +98,15 @@ export default function Home() {
               <div>
                 <h1 className="font-black tracking-tight text-foreground">
                   <span className="block text-6xl md:text-7xl">Anchor</span>
-                  <span className="block text-7xl md:text-8xl">Vault</span>
+                  <span className="block text-7xl md:text-8xl">Hello</span>
                 </h1>
               </div>
 
               <div className="flex max-w-2xl flex-col gap-3">
                 <p className="text-base leading-relaxed text-foreground/50">
-                  This program creates a personal vault for each user using a
-                  Program Derived Address (PDA). Connect your wallet, deposit
-                  SOL into your vault, and withdraw it anytime. Only you can
-                  access your funds.
+                  This app is wired for the local development loop in `pnpm
+                  dev:local`. Connect your wallet, select localnet, fund your
+                  wallet, and send a signed Hello World instruction.
                 </p>
                 <p className="text-sm leading-relaxed text-foreground/40">
                   The vault is an{" "}
@@ -119,8 +118,8 @@ export default function Home() {
                   >
                     Anchor
                   </a>{" "}
-                  program you can deploy to localnet or devnet and modify
-                  yourself. Check the README for setup instructions.
+                  program deployed by the local validator workflow. Program logs
+                  are visible with the Solana CLI while localnet is running.
                 </p>
                 <div className="flex flex-wrap gap-4">
                   <a
@@ -260,8 +259,7 @@ export default function Home() {
               </section>
             )}
 
-            {/* Vault Program Section */}
-            <VaultCard />
+            <HelloWorldCard />
           </div>
         </main>
       </div>

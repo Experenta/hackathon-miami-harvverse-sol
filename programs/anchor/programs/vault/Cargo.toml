@@ -1,7 +1,7 @@
 [package]
 name = "vault"
 version = "0.1.0"
-description = "A simple SOL vault program"
+description = "A simple Hello World program"
 edition = "2021"
 
 [lib]

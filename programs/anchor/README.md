@@ -1,4 +1,4 @@
-# Anchor Vault Program
+# Anchor Hello World Program
 
 This directory contains the Anchor Rust workspace for the Solana program used by this Turborepo.
 
@@ -6,12 +6,12 @@ The frontend apps do not deploy programs directly:
 
 - `programs/anchor` contains the Anchor program source and build output.
 - `packages/solana-client` contains shared Solana helpers and the Codama-generated TypeScript client.
-- `apps/web` imports the generated Vault instructions from `@repo/solana-client`.
+- `apps/web` imports the generated Hello World instruction from `@repo/solana-client`.
 - `apps/native` is set up to interact with deployed Solana programs through Solana Kit and Mobile Wallet Adapter.
 
 ## Current Program
 
-The included Vault program comes from the Solana Foundation `kit/nextjs-anchor` template. This checkout is currently synced to the local generated program keypair:
+The included Anchor program is a simple Hello World contract. This checkout is currently synced to the local generated program keypair:
 
 ```txt
 Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP
@@ -59,16 +59,11 @@ Anchor and Solana CLI tools must be installed locally before running the program
 
 ## Program Overview
 
-The Vault program allows each wallet to use a personal PDA vault:
+The program exposes one instruction:
 
-- **Deposit**: Send SOL to a vault PDA derived from the wallet address.
-- **Withdraw**: Return all SOL from that vault PDA to the wallet owner.
+- **say_hello**: Requires the connected wallet as a signer and writes `Hello, world!` plus the signer address to the program logs.
 
-The PDA seed is:
-
-```txt
-["vault", signer]
-```
+It does not create accounts, derive PDAs, or move SOL.
 
 ## Deploying Your Own Program
 
