@@ -124,24 +124,30 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
     - Ensure all tests pass, ask the user if questions arise.
 
 - [-] 5. Convex Backend Setup and Schema
-    - [-] 5.1 Initialize Convex in the workspace
-        - Run `npx convex init` at the workspace root to create the `convex/` directory with `_generated/` and `tsconfig.json`
-        - Add `convex` dependency to the root or `apps/native` package.json as appropriate
-        - Configure Convex project URL in environment (`.env.local` or app config)
+    - [x] 5.1 Initialize Convex in the workspace
+        - Convex is already initialized at `packages/backend/` as the `@havverse/backend` workspace package
+        - The `ConvexClientProvider` is already wired in `apps/native/components/convex/convex-client-provider.tsx`
+        - The native app already has `"@havverse/backend": "workspace:*"` and `"convex": "^1.37.0"` in its dependencies
+        - Ensure `packages/backend/.env.local` has `CONVEX_DEPLOYMENT` and `CONVEX_URL` (copy from `.env.example`)
+        - Ensure `apps/native/.env.local` has `EXPO_PUBLIC_CONVEX_URL` matching the Convex deployment URL
+        - Run `pnpm convex:setup` from repo root to connect the deployment and generate types
+        - All Convex function files go in `packages/backend/convex/` (not a root `convex/` directory)
+        - Import the API in the native app via: `import { api } from "@havverse/backend/convex/_generated/api"`
         - _Requirements: 9.1_
 
     - [ ] 5.2 Define the Convex schema (9 tables)
-        - Create `convex/schema.ts` with all 9 tables: users, farmerProfiles, partnerProfiles, lots, lotMedia, agronomicPlans, sensorSnapshots, partnerships, auditEvents
+        - Create `packages/backend/convex/schema.ts` with all 9 tables: users, farmerProfiles, partnerProfiles, lots, lotMedia, agronomicPlans, sensorSnapshots, partnerships, auditEvents
         - Define all fields, validators, and indexes exactly as specified in the design document
+        - Always read `packages/backend/convex/_generated/ai/guidelines.md` before writing schema code
         - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.13, 9.14_
 
     - [ ] 5.3 Implement users queries and mutations
-        - Create `convex/users.ts` with: `getByWallet` query, `upsertAfterWalletConnect` mutation (idempotent by wallet), `recordRoleRegistration` mutation
+        - Create `packages/backend/convex/users.ts` with: `getByWallet` query, `upsertAfterWalletConnect` mutation (idempotent by wallet), `recordRoleRegistration` mutation
         - `upsertAfterWalletConnect` creates a new user record if none exists for the wallet, otherwise updates `updatedAt`
         - _Requirements: 9.8, 9.9, 9.15_
 
     - [ ] 5.4 Implement lots queries and mutations
-        - Create `convex/lots.ts` with: `listPublished` query, `getByCode` query, `listByFarmer` query, `createDraft` mutation, `applyDemoAutofill` mutation, `recordOnChainLot` mutation, `markPublished` mutation
+        - Create `packages/backend/convex/lots.ts` with: `listPublished` query, `getByCode` query, `listByFarmer` query, `createDraft` mutation, `applyDemoAutofill` mutation, `recordOnChainLot` mutation, `markPublished` mutation
         - `createDraft` sets status to "draft" with all lot fields
         - `applyDemoAutofill` applies Zafiro demo data to an existing draft lot
         - `recordOnChainLot` stores the lot PDA address and creation tx signature
@@ -149,18 +155,18 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - _Requirements: 9.10, 9.11, 9.16, 9.17, 9.18, 9.19, 9.20_
 
     - [ ] 5.5 Implement partnerships queries and mutations
-        - Create `convex/partnerships.ts` with: `listByPartner` query, `createPendingReservation` mutation, `recordReservationTx` mutation
+        - Create `packages/backend/convex/partnerships.ts` with: `listByPartner` query, `createPendingReservation` mutation, `recordReservationTx` mutation
         - `createPendingReservation` creates a partnership record with status "reserved"
         - `recordReservationTx` stores the partnership PDA and reservation tx signature
         - _Requirements: 9.12, 9.21, 9.22_
 
     - [ ] 5.6 Implement profile, media, sensor, plan, and audit functions
-        - Create `convex/farmerProfiles.ts` with: `getByWallet` query, `upsert` mutation
-        - Create `convex/partnerProfiles.ts` with: `getByWallet` query, `upsert` mutation
-        - Create `convex/lotMedia.ts` with: `listByLot` query, `addMedia` mutation
-        - Create `convex/sensorSnapshots.ts` with: `listByLot` query, `addSnapshot` mutation
-        - Create `convex/agronomicPlans.ts` with: `getByLot` query, `upsertPlan` mutation
-        - Create `convex/audit.ts` with: `record` mutation, `listByEntity` query
+        - Create `packages/backend/convex/farmerProfiles.ts` with: `getByWallet` query, `upsert` mutation
+        - Create `packages/backend/convex/partnerProfiles.ts` with: `getByWallet` query, `upsert` mutation
+        - Create `packages/backend/convex/lotMedia.ts` with: `listByLot` query, `addMedia` mutation
+        - Create `packages/backend/convex/sensorSnapshots.ts` with: `listByLot` query, `addSnapshot` mutation
+        - Create `packages/backend/convex/agronomicPlans.ts` with: `getByLot` query, `upsertPlan` mutation
+        - Create `packages/backend/convex/audit.ts` with: `record` mutation, `listByEntity` query
         - _Requirements: 9.4, 9.5, 9.6, 9.7, 9.13, 9.14_
 
     - [ ]\* 5.7 Write unit tests for Convex functions
@@ -168,26 +174,28 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Test `createDraft` creates lot with correct status
         - Test `listPublished` returns only published lots
         - Test `applyDemoAutofill` applies correct Zafiro data
+        - Use `convex-test` with `vitest` and `@edge-runtime/vm` inside `packages/backend/convex/`
         - _Requirements: 9.9, 9.10, 9.11, 9.18_
 
 - [ ]   6. Checkpoint — Convex schema deploys and functions type-check
-    - Run `npx convex dev --once` or equivalent to validate schema and function compilation
+    - Run `pnpm convex:setup` from repo root (or `pnpm setup` inside `packages/backend/`) to validate schema and function compilation
     - Run `pnpm typecheck` to verify no type errors in the workspace
     - Ensure all tests pass, ask the user if questions arise.
 
 - [ ]   7. Mobile App — Routing, Providers, and Wallet Connection
     - [ ] 7.1 Update provider hierarchy with Convex and Role context
-        - Install `convex` and `convex/react-native` (or `convex/react`) in `apps/native`
-        - Update `apps/native/components/app-providers.tsx` to add ConvexProvider wrapping NetworkProvider
+        - `convex` is already installed in `apps/native` and `ConvexClientProvider` is already wired in `apps/native/components/convex/convex-client-provider.tsx`
+        - Ensure `apps/native/.env.local` has `EXPO_PUBLIC_CONVEX_URL` set to the Convex deployment URL
         - Create `apps/native/features/role/role-context.tsx` with RoleProvider that exposes role state, isLoading, error, refetch
-        - Update provider nesting order: QueryClient > Convex > Network > MWA > Role > Stack
-        - Update `apps/native/constants/app-config.ts` with Convex URL
+        - Update provider nesting order in `apps/native/components/app-providers.tsx`: QueryClient > Convex > Network > MWA > Role > Stack
+        - Update `apps/native/constants/app-config.ts` with Convex URL reference if needed
+        - Import Convex API via `import { api } from "@havverse/backend/convex/_generated/api"`
         - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 12.1_
 
     - [ ] 7.2 Implement wallet connection screen and MWA hook
         - Create `apps/native/features/wallet/use-wallet-connection.ts` hook wrapping MWA authorize/deauthorize
         - Create `apps/native/app/connect-wallet.tsx` screen with MWA connect button
-        - On successful connection, call `users.upsertAfterWalletConnect` Convex mutation
+        - On successful connection, call `users.upsertAfterWalletConnect` Convex mutation via `import { api } from "@havverse/backend/convex/_generated/api"`
         - _Requirements: 5.1, 6.5_
 
     - [ ] 7.3 Implement role fetching and routing logic
@@ -368,3 +376,4 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
 - The implementation order follows the PRD: Program -> Client -> Convex -> Mobile Routing -> Farmer -> Partner
 - The existing Vault program ID (`Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP`) is reused for the harvverse program on devnet
 - AI Agent chat and x402 endpoints are explicitly excluded from this implementation plan
+- **Convex lives at `packages/backend/`** (package `@havverse/backend`), not at the workspace root. All Convex function files go in `packages/backend/convex/`. The native app imports via `@havverse/backend/convex/_generated/api`. Always read `packages/backend/convex/_generated/ai/guidelines.md` before writing Convex code.

@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["ws"],
-  transpilePackages: ["@repo/backend", "@repo/solana-client"],
+  transpilePackages: ["@havverse/backend", "@repo/solana-client"],
   turbopack: {
     resolveAlias: {
       fs: { browser: "./empty-module.js" },

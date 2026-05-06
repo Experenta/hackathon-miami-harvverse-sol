@@ -14,7 +14,7 @@
     "clean": "rm -rf .next out dist"
   },
   "dependencies": {
-    "@repo/backend": "workspace:*",
+    "@havverse/backend": "workspace:*",
     "@repo/solana-client": "workspace:*",
     "@solana/kit": "^6.3.0",
     "@solana/kit-client-rpc": "^0.7.0",

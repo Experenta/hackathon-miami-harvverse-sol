@@ -48,7 +48,7 @@ apps/native/.env.local  -> EXPO_PUBLIC_CONVEX_URL=...
 Once these env values are set, both apps are wrapped with a Convex React provider. Import generated API references from the shared backend package:
 
 ```ts
-import { api } from "@repo/backend/convex/_generated/api";
+import { api } from "@havverse/backend/convex/_generated/api";
 ```
 
 To build the Anchor program and regenerate the TypeScript client:
