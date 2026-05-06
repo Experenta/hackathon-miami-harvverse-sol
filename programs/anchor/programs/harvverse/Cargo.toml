@@ -1,12 +1,12 @@
 [package]
-name = "vault"
+name = "harvverse"
 version = "0.1.0"
-description = "A simple Hello World program"
+description = "Harvverse Solana program for coffee farmer-partner marketplace"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "vault"
+name = "harvverse"
 
 [features]
 default = []
