@@ -1,5 +1,31 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+
+const auditArgs = {
+	actorWallet: v.optional(v.string()),
+	kind: v.string(),
+	entityType: v.string(),
+	entityId: v.string(),
+	data: v.any(),
+};
+
+/**
+ * Internal mutation for recording audit events from other mutations.
+ * Not exposed to the public API.
+ */
+export const recordInternal = internalMutation({
+	args: auditArgs,
+	handler: async (ctx, args) => {
+		return await ctx.db.insert("auditEvents", {
+			actorWallet: args.actorWallet,
+			kind: args.kind,
+			entityType: args.entityType,
+			entityId: args.entityId,
+			data: args.data,
+			createdAt: Date.now(),
+		});
+	},
+});
 
 /**
  * Records an audit event for a given entity.

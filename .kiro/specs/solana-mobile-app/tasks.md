@@ -232,21 +232,21 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
     - Run `pnpm typecheck` to verify no type errors
     - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]   9. Farmer Dashboard — Lot Creation and Publishing
-    - [ ] 9.1 Implement Farmer home screen
+- [x]   9. Farmer Dashboard — Lot Creation and Publishing
+    - [x] 9.1 Implement Farmer home screen
         - Create `apps/native/app/(farmer)/home.tsx` showing connected wallet address, Farmer role PDA, and lot list
         - Create `apps/native/features/farmer/use-farmer-lots.ts` hook querying `lots.listByFarmer` from Convex
         - Display lot cards with status badges (draft, published, reserved, settled)
         - Add "Create lot" button navigating to lots/new
         - _Requirements: 7.1_
 
-    - [ ] 9.2 Implement Farmer profile creation
+    - [x] 9.2 Implement Farmer profile creation
         - Create `apps/native/app/(farmer)/profile.tsx` screen with form: displayName, bio, country, region
         - On submit: compute metadata hash from profile fields, build `createFarmerProfile` transaction, sign via MWA
         - On confirm: save profile to Convex `farmerProfiles.upsert` mutation
         - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
-    - [ ] 9.3 Implement lot editor with demo autofill
+    - [x] 9.3 Implement lot editor with demo autofill
         - Create `apps/native/app/(farmer)/lots/new.tsx` lot creation screen
         - Create `apps/native/features/farmer/lot-form.tsx` reusable form component with fields: lotCode, farmName, country, region, latitude, longitude, altitudeMeters, variety, areaManzanas, ticketUsdc, farmerShareBps, partnerShareBps
         - Create `apps/native/constants/demo-data.ts` with Zafiro autofill constants (HV-HN-ZAF-L02, Zafiro, Honduras, Comayagua, 14.9465, -88.0863, 1300, Parainema, 1.0, 3425, 6000, 4000)
@@ -254,14 +254,14 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - On save: call `lots.createDraft` Convex mutation
         - _Requirements: 7.2, 7.3, 7.4, 7.7_
 
-    - [ ] 9.4 Implement agronomic plan and sensor snapshot autofill
+    - [x] 9.4 Implement agronomic plan and sensor snapshot autofill
         - Add "Autofill agronomic plan" button to lot editor that populates plan reference with demo plan ID and summary
         - Add "Autofill demo sensor snapshot" button that populates sensor fields with demo values (source=demo_autofill, representative temperature, humidity, soil pH, soil moisture)
         - On autofill: save to Convex `sensorSnapshots.addSnapshot` and `agronomicPlans.upsertPlan` mutations with source "demo_autofill"
         - Visually label autofill buttons as demo helpers
         - _Requirements: 13.1, 13.2, 13.3, 13.4_
 
-    - [ ] 9.5 Implement lot publish flow with manifest hashing
+    - [x] 9.5 Implement lot publish flow with manifest hashing
         - Create `apps/native/app/(farmer)/lots/[lotCode]/publish-review.tsx` publish review screen
         - Create `apps/native/features/farmer/publish-flow.ts` with logic: compute metadata manifest hash, plan hash, media manifest hash, sensor manifest hash using `computeManifestHash` from `@repo/solana-client`
         - Build `create_lot` transaction (with all hashes and lot params), then `publish_lot` transaction
@@ -270,7 +270,7 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Display published lot with PDA address
         - _Requirements: 7.5, 7.6, 14.1, 14.2, 14.3, 14.4, 14.5_
 
-    - [ ] 9.6 Implement lot edit screen for drafts
+    - [x] 9.6 Implement lot edit screen for drafts
         - Create `apps/native/app/(farmer)/lots/[lotCode]/edit.tsx` for editing existing draft lots
         - Load lot data from Convex `lots.getByCode` query
         - Allow editing all fields and re-saving draft
@@ -282,44 +282,44 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Test that autofill data produces expected hash values
         - _Requirements: 14.1, 14.6_
 
-- [ ]   10. Checkpoint — Farmer can create, autofill, and publish lots
+- [x]   10. Checkpoint — Farmer can create, autofill, and publish lots
     - Run `pnpm typecheck` to verify no type errors
     - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]   11. Partner Dashboard — Catalog and Partnership Reservation
-    - [ ] 11.1 Implement Partner home screen
+- [x]   11. Partner Dashboard — Catalog and Partnership Reservation
+    - [x] 11.1 Implement Partner home screen
         - Create `apps/native/app/(partner)/home.tsx` showing connected wallet address, Partner role PDA, and partnership list
         - Create `apps/native/features/partner/use-partnership.ts` hook querying `partnerships.listByPartner` from Convex
         - Display partnership cards with status badges
         - _Requirements: 8.1_
 
-    - [ ] 11.2 Implement Partner profile creation
+    - [x] 11.2 Implement Partner profile creation
         - Create `apps/native/app/(partner)/profile.tsx` screen with form: displayName, organization
         - On submit: compute metadata hash, build `createPartnerProfile` transaction, sign via MWA
         - On confirm: save profile to Convex `partnerProfiles.upsert` mutation
         - _Requirements: 15.1, 15.2, 15.3, 15.4_
 
-    - [ ] 11.3 Implement lot catalog screen
+    - [x] 11.3 Implement lot catalog screen
         - Create `apps/native/app/(partner)/catalog.tsx` listing all published lots
         - Create `apps/native/features/partner/use-lot-catalog.ts` hook querying `lots.listPublished` from Convex
         - Display lot cards with: farm name, variety, location, ticket amount
         - Tap navigates to lot detail
         - _Requirements: 8.1_
 
-    - [ ] 11.4 Implement lot detail screen with on-chain verification
+    - [x] 11.4 Implement lot detail screen with on-chain verification
         - Create `apps/native/app/(partner)/lots/[lotCode]/index.tsx` showing full lot details: farm name, variety, location, ticket amount, share split, lot PDA address, farmer wallet
         - Fetch on-chain Lot PDA to verify it exists and matches Convex data
         - Display verification status (on-chain match / mismatch / not found)
         - Add "Reserve partnership" button navigating to reserve flow
         - _Requirements: 8.2, 8.3, 8.4_
 
-    - [ ] 11.5 Implement settlement preview screen
+    - [x] 11.5 Implement settlement preview screen
         - Create `apps/native/app/(partner)/partnerships/[partnershipId]/settlement.tsx` displaying settlement math
         - Show: revenue = 6qq x 83.3 lb/qq x $3.50 = $1,750, cost = $1,490, profit = $260, farmer 60% = $156, partner 40% = $104
         - Use lot share BPS values for dynamic calculation display
         - _Requirements: 8.7_
 
-    - [ ] 11.6 Implement partnership reservation flow
+    - [x] 11.6 Implement partnership reservation flow
         - Create `apps/native/app/(partner)/lots/[lotCode]/reserve.tsx` partnership review screen
         - Create `apps/native/features/partner/reserve-flow.ts` with logic: compute terms hash from canonical JSON (lot PDA, farmer wallet, partner wallet, ticket_usdc_cents, farmer_share_bps, partner_share_bps, metadata hash, plan hash, timestamp)
         - Build `reserve_partnership` transaction with terms hash
@@ -338,8 +338,8 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
     - Run `pnpm typecheck` to verify no type errors
     - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]   13. Final Integration and Wiring
-    - [ ] 13.1 Wire shared UI components
+- [x]   13. Final Integration and Wiring
+    - [x] 13.1 Wire shared UI components
         - Create `apps/native/components/ui/button.tsx` shared button component
         - Create `apps/native/components/ui/card.tsx` shared card component
         - Create `apps/native/components/ui/form-field.tsx` shared form field component
@@ -347,12 +347,12 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Ensure consistent styling across Farmer and Partner screens
         - _Requirements: 6.3, 7.5, 8.5_
 
-    - [ ] 13.2 Add Convex audit event recording
+    - [x] 13.2 Add Convex audit event recording
         - Wire audit event recording into key mutations: role registration, lot creation, lot publish, partnership reservation
         - Each audit event records: actorWallet, kind, entityType, entityId, data, createdAt
         - _Requirements: 9.14_
 
-    - [ ] 13.3 Verify end-to-end type safety across packages
+    - [x] 13.3 Verify end-to-end type safety across packages
         - Run `pnpm typecheck` across the full workspace
         - Fix any type errors in the integration between `@repo/solana-client`, Convex functions, and native app
         - Ensure all imports resolve correctly

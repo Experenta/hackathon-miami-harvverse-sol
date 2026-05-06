@@ -57,6 +57,10 @@
       "cache": false,
       "persistent": true
     },
+    "//#localnet:android": {
+      "cache": false,
+      "persistent": true
+    },
     "start": {
       "cache": false,
       "persistent": true

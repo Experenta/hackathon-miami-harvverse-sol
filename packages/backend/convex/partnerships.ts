@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -28,7 +29,7 @@ export const createPendingReservation = mutation({
 	handler: async (ctx, args) => {
 		const now = Date.now();
 
-		return await ctx.db.insert("partnerships", {
+		const partnershipId = await ctx.db.insert("partnerships", {
 			lotCode: args.lotCode,
 			lotPda: args.lotPda,
 			farmerWallet: args.farmerWallet,
@@ -38,6 +39,20 @@ export const createPendingReservation = mutation({
 			createdAt: now,
 			updatedAt: now,
 		});
+
+		await ctx.runMutation(internal.audit.recordInternal, {
+			actorWallet: args.partnerWallet,
+			kind: "partnership_reserved",
+			entityType: "partnership",
+			entityId: args.lotCode,
+			data: {
+				lotCode: args.lotCode,
+				farmerWallet: args.farmerWallet,
+				partnerWallet: args.partnerWallet,
+			},
+		});
+
+		return partnershipId;
 	},
 });
 

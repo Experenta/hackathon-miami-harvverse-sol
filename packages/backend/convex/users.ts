@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -59,6 +60,7 @@ export const recordRoleRegistration = mutation({
 			.unique();
 
 		const now = Date.now();
+		let userId;
 
 		if (existing) {
 			await ctx.db.patch(existing._id, {
@@ -67,17 +69,31 @@ export const recordRoleRegistration = mutation({
 				roleTx: args.roleTx,
 				updatedAt: now,
 			});
-			return existing._id;
+			userId = existing._id;
+		} else {
+			// Create the user record if it doesn't exist yet (edge case)
+			userId = await ctx.db.insert("users", {
+				wallet: args.wallet,
+				role: args.role,
+				rolePda: args.rolePda,
+				roleTx: args.roleTx,
+				createdAt: now,
+				updatedAt: now,
+			});
 		}
 
-		// Create the user record if it doesn't exist yet (edge case)
-		return await ctx.db.insert("users", {
-			wallet: args.wallet,
-			role: args.role,
-			rolePda: args.rolePda,
-			roleTx: args.roleTx,
-			createdAt: now,
-			updatedAt: now,
+		await ctx.runMutation(internal.audit.recordInternal, {
+			actorWallet: args.wallet,
+			kind: "role_registered",
+			entityType: "user",
+			entityId: args.wallet,
+			data: {
+				role: args.role,
+				rolePda: args.rolePda,
+				roleTx: args.roleTx,
+			},
 		});
+
+		return userId;
 	},
 });

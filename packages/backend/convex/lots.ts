@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 // Zafiro demo lot constants used by applyDemoAutofill
@@ -83,7 +84,7 @@ export const createDraft = mutation({
 		const now = Date.now();
 		const emptyHash = "0".repeat(64); // placeholder until hashes are computed on publish
 
-		return await ctx.db.insert("lots", {
+		const lotId = await ctx.db.insert("lots", {
 			lotCode: args.lotCode,
 			farmerWallet: args.farmerWallet,
 			status: "draft",
@@ -105,6 +106,20 @@ export const createDraft = mutation({
 			createdAt: now,
 			updatedAt: now,
 		});
+
+		await ctx.runMutation(internal.audit.recordInternal, {
+			actorWallet: args.farmerWallet,
+			kind: "lot_created",
+			entityType: "lot",
+			entityId: args.lotCode,
+			data: {
+				lotCode: args.lotCode,
+				farmName: args.farmName,
+				status: "draft",
+			},
+		});
+
+		return lotId;
 	},
 });
 
@@ -212,6 +227,62 @@ export const markPublished = mutation({
 			updates.sensorManifestHash = args.sensorManifestHash;
 
 		await ctx.db.patch(lot._id, updates);
+
+		await ctx.runMutation(internal.audit.recordInternal, {
+			actorWallet: lot.farmerWallet,
+			kind: "lot_published",
+			entityType: "lot",
+			entityId: args.lotCode,
+			data: { lotCode: args.lotCode, tx: args.tx },
+		});
+
+		return lot._id;
+	},
+});
+
+/**
+ * Updates an existing draft lot with new field values.
+ * Only lots in "draft" status can be updated.
+ */
+export const updateDraft = mutation({
+	args: {
+		lotCode: v.string(),
+		farmName: v.optional(v.string()),
+		variety: v.optional(v.string()),
+		region: v.optional(v.string()),
+		country: v.optional(v.string()),
+		latitude: v.optional(v.number()),
+		longitude: v.optional(v.number()),
+		altitudeMeters: v.optional(v.number()),
+		areaManzanas: v.optional(v.number()),
+		ticketUsdcCents: v.optional(v.number()),
+		farmerShareBps: v.optional(v.number()),
+		partnerShareBps: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const lot = await ctx.db
+			.query("lots")
+			.withIndex("by_lot_code", (q) => q.eq("lotCode", args.lotCode))
+			.unique();
+
+		if (!lot) {
+			throw new Error(`Lot not found: ${args.lotCode}`);
+		}
+
+		if (lot.status !== "draft") {
+			throw new Error("Cannot update a lot that is not in draft status");
+		}
+
+		const { lotCode: _, ...updates } = args;
+		const patchData: Record<string, unknown> = { updatedAt: Date.now() };
+
+		for (const [key, value] of Object.entries(updates)) {
+			if (value !== undefined) {
+				patchData[key] = value;
+			}
+		}
+
+		await ctx.db.patch(lot._id, patchData);
 
 		return lot._id;
 	},
