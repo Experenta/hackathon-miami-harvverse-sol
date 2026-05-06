@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -96,7 +97,11 @@ export default function RoleSelectScreen() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        style={styles.scrollView}
+      >
         <Text style={styles.title}>Choose your role</Text>
         <Text style={styles.subtitle}>
           Your role is registered on-chain and cannot be changed.
@@ -160,7 +165,7 @@ export default function RoleSelectScreen() {
             </Text>
           )}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -170,10 +175,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f9fafb",
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  container: {
+    flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
+    paddingBottom: 32,
     gap: 16,
   },
   title: {

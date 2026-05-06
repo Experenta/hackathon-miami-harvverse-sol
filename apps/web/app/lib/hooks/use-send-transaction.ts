@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { useSWRConfig } from "swr";
 import {
   appendTransactionMessageInstructions,
-  compileTransaction,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
   getBase58Decoder,
@@ -40,46 +39,6 @@ export interface UseTransactionReturn {
 
 const signatureDecoder = getBase58Decoder();
 
-function stringifyUnknown(value: unknown): string {
-  if (typeof value === "string") return value;
-
-  try {
-    return JSON.stringify(value, (_, item) =>
-      typeof item === "bigint" ? item.toString() : item,
-    );
-  } catch {
-    return String(value);
-  }
-}
-
-function formatSimulationFailure(value: {
-  err?: unknown;
-  logs?: readonly string[] | null;
-  unitsConsumed?: bigint | number | null;
-}): string {
-  const logs = value.logs ?? [];
-  const interestingLog = logs.find(
-    (line) =>
-      line.includes("AnchorError") ||
-      line.includes("Error Code") ||
-      line.includes("custom program error") ||
-      line.includes("failed:"),
-  );
-  const logTail = logs.slice(-10).join("\n");
-
-  return [
-    "Transaction simulation failed before wallet signing.",
-    `RPC error: ${stringifyUnknown(value.err)}`,
-    interestingLog ? `Relevant log: ${interestingLog}` : null,
-    value.unitsConsumed != null
-      ? `Units consumed: ${value.unitsConsumed.toString()}`
-      : null,
-    logTail ? `Logs:\n${logTail}` : "No simulation logs returned by RPC.",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
 export function useTransaction(): UseTransactionReturn {
   const { signer } = useWallet();
   const client = useSolanaClient();
@@ -104,10 +63,9 @@ export function useTransaction(): UseTransactionReturn {
           throw new Error("Wallet not connected");
         }
 
-        const {
-          context: { slot: minContextSlot },
-          value: latestBlockhash,
-        } = await client.rpc.getLatestBlockhash().send();
+        const { value: latestBlockhash } = await client.rpc
+          .getLatestBlockhash()
+          .send();
         const instructions = await buildInstructions(signer);
 
         const transactionMessage = pipe(
@@ -117,23 +75,6 @@ export function useTransaction(): UseTransactionReturn {
           (tx) =>
             setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
         );
-
-        const wireTransaction = getBase64EncodedWireTransaction(
-          compileTransaction(transactionMessage),
-        );
-        const simulation = await client.rpc
-          .simulateTransaction(wireTransaction, {
-            commitment: "processed",
-            encoding: "base64",
-            minContextSlot,
-            replaceRecentBlockhash: false,
-            sigVerify: false,
-          })
-          .send();
-
-        if (simulation.value.err) {
-          throw new Error(formatSimulationFailure(simulation.value));
-        }
 
         let signature: string;
         if (isTransactionMessageWithSingleSendingSigner(transactionMessage)) {
