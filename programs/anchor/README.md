@@ -39,13 +39,13 @@ turbo run codegen:program
 The Anchor build writes the IDL to:
 
 ```txt
-programs/anchor/target/idl/vault.json
+programs/anchor/target/idl/harvverse.json
 ```
 
 Codama reads that IDL through the root `codama.json` file and regenerates the client at:
 
 ```txt
-packages/solana-client/src/generated/vault
+packages/solana-client/src/generated/harvverse
 ```
 
 ## Prerequisites
@@ -75,13 +75,13 @@ From the repository root:
 
 ```bash
 cd programs/anchor
-solana-keygen new -o target/deploy/vault-keypair.json
+solana-keygen new -o target/deploy/harvverse-keypair.json
 ```
 
 ### 2. Get the new program ID
 
 ```bash
-solana address -k target/deploy/vault-keypair.json
+solana address -k target/deploy/harvverse-keypair.json
 ```
 
 ### 3. Update program IDs
@@ -90,7 +90,7 @@ Update the new program ID in:
 
 - `programs/anchor/Anchor.toml` under `[programs.devnet]`
 - `programs/anchor/Anchor.toml` under `[programs.localnet]` if you use local validator deployments
-- `programs/anchor/programs/vault/src/lib.rs` in `declare_id!("...")`
+- `programs/anchor/programs/harvverse/src/lib.rs` in `declare_id!("...")`
 
 ### 4. Build and deploy
 
@@ -112,7 +112,7 @@ pnpm codama:js
 pnpm build
 ```
 
-Commit the updated generated files under `packages/solana-client/src/generated/vault` with the program changes.
+Commit the updated generated files under `packages/solana-client/src/generated/harvverse` with the program changes.
 
 ## Testing
 
@@ -125,5 +125,5 @@ pnpm anchor:test
 The tests use LiteSVM and live in:
 
 ```txt
-programs/anchor/programs/vault/src/tests.rs
+programs/anchor/programs/harvverse/src/tests.rs
 ```

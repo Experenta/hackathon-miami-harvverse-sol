@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(anchor --version)",
+      "Bash(solana --version)"
+    ]
+  }
+}

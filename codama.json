@@ -1,10 +1,10 @@
 {
-  "idl": "./programs/anchor/target/idl/vault.json",
+  "idl": "./programs/anchor/target/idl/harvverse.json",
   "scripts": {
     "js": [
       {
         "from": "@codama/renderers-js",
-        "args": ["./packages/solana-client/src/generated/vault"]
+        "args": ["./packages/solana-client/src/generated/harvverse"]
       }
     ]
   }

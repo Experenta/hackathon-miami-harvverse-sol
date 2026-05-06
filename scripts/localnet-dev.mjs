@@ -178,6 +178,7 @@ function watchAnchorFiles() {
 }
 
 function startValidator() {
+  mkdirSync(resolve(rootDir, dirname(ledgerDir)), { recursive: true });
   const args = ["--ledger", ledgerDir];
   if (resetLedger) args.unshift("--reset");
   validatorProcess = spawnChild("validator", "solana-test-validator", args);

@@ -5,17 +5,16 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-vault = "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP"
+harvverse = "HD1Bsrbw5tBKpLF3WE2gtnrDDYagNQgwHKAd9E3JZqst"
 
 [programs.localnet]
-vault = "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP"
-
-[registry]
-url = "https://api.apr.dev"
+harvverse = "HD1Bsrbw5tBKpLF3WE2gtnrDDYagNQgwHKAd9E3JZqst"
 
 [provider]
 cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "cargo test"
+test = "pnpm test"
+
+[hooks]

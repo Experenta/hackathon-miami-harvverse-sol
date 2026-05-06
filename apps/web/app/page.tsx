@@ -7,7 +7,7 @@ import { useWallet } from "./lib/wallet/context";
 import { useBalance } from "./lib/hooks/use-balance";
 import { ellipsify, lamportsToSolString } from "@repo/solana-client";
 import { useSolanaClient } from "./lib/solana-client-context";
-import { HelloWorldCard } from "./components/hello-world-card";
+import { HarvverseDemo } from "./components/harvverse-demo";
 import { GridBackground } from "./components/grid-background";
 import { ThemeToggle } from "./components/theme-toggle";
 import { ClusterSelect } from "./components/cluster-select";
@@ -259,7 +259,7 @@ export default function Home() {
               </section>
             )}
 
-            <HelloWorldCard />
+            <HarvverseDemo />
           </div>
         </main>
       </div>

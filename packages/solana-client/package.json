@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./generated/vault": "./src/generated/vault/index.ts"
+    "./generated/harvverse": "./src/generated/harvverse/index.ts"
   },
   "scripts": {
     "build": "pnpm run typecheck",
