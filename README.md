@@ -5,6 +5,7 @@ Solana dApp Turborepo with:
 - `apps/web` - Next.js 16 web dApp using `@solana/kit`, wallet-standard, Tailwind, and the Anchor Hello World client.
 - `apps/native` - Expo React Native Android app using Solana Kit and Mobile Wallet Adapter.
 - `programs/anchor` - Anchor Rust workspace with the example Hello World program.
+- `packages/backend` - shared Convex backend and generated API types consumed by web and native apps.
 - `packages/solana-client` - shared Solana helpers plus the Codama-generated TypeScript client.
 - `packages/ui` - existing shared React Native UI package from the original starter.
 
@@ -31,6 +32,25 @@ Devnet is the default Anchor provider cluster in this checkout. The shared Solan
 pnpm install
 ```
 
+To configure Convex, run the backend setup command and follow the Convex login/project prompts:
+
+```bash
+pnpm convex:setup
+```
+
+This creates `packages/backend/.env.local`. Copy its `CONVEX_URL` value into:
+
+```txt
+apps/web/.env.local     -> NEXT_PUBLIC_CONVEX_URL=...
+apps/native/.env.local  -> EXPO_PUBLIC_CONVEX_URL=...
+```
+
+Once these env values are set, both apps are wrapped with a Convex React provider. Import generated API references from the shared backend package:
+
+```ts
+import { api } from "@repo/backend/convex/_generated/api";
+```
+
 To build the Anchor program and regenerate the TypeScript client:
 
 ```bash
@@ -42,6 +62,8 @@ pnpm run setup
 ## Development
 
 ```bash
+pnpm dev
+pnpm dev:convex
 pnpm dev:web
 pnpm dev:native
 pnpm android

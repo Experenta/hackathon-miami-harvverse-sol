@@ -2,6 +2,7 @@
   "private": true,
   "scripts": {
     "dev": "turbo run dev",
+    "dev:convex": "turbo run dev --filter=@repo/backend",
     "dev:local": "turbo run localnet:dev",
     "localnet:dev": "node scripts/localnet-dev.mjs",
     "dev:web": "turbo run dev --filter=web",
@@ -23,6 +24,8 @@
     "anchor:test": "turbo run anchor:test --filter=@repo/anchor-program",
     "codama:js": "turbo run codegen:program",
     "codegen:program": "codama run js",
+    "convex:codegen": "turbo run codegen --filter=@repo/backend",
+    "convex:setup": "turbo run setup --filter=@repo/backend",
     "localnet:airdrop": "node scripts/localnet-airdrop.mjs",
     "clean": "turbo run clean && rm -rf node_modules",
     "format": "turbo run format format:root --continue",

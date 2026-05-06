@@ -1,0 +1,9 @@
+import { query } from "./_generated/server";
+
+export const get = query({
+  args: {},
+  handler: () => ({
+    ok: true,
+    service: "harvverse-miami-tracks",
+  }),
+});

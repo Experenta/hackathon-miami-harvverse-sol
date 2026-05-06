@@ -1,5 +1,6 @@
 export * from "./errors";
 export * from "./explorer";
-export * from "./generated/vault";
+export * from "./generated/harvverse";
 export * from "./lamports";
 export * from "./solana-client";
+export * from "./harvverse";

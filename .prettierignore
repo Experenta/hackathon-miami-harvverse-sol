@@ -12,4 +12,5 @@ ios
 programs/anchor/target
 programs/anchor/.anchor
 packages/solana-client/src/generated
+packages/backend/convex/_generated
 pnpm-lock.yaml

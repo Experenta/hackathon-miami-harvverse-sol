@@ -25,6 +25,12 @@
       "inputs": ["$TURBO_DEFAULT$", "tsconfig.json", ".env*"],
       "outputs": []
     },
+    "codegen": {
+      "cache": false
+    },
+    "setup": {
+      "cache": false
+    },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$", "eslint.config.*"],
       "outputs": []

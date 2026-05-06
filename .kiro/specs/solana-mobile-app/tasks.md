@@ -73,8 +73,8 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
     - Run `pnpm anchor:test` to verify all integration tests pass
     - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]   3. Codama Client Generation and PDA Helpers
-    - [ ] 3.1 Regenerate TypeScript client from harvverse IDL
+- [x]   3. Codama Client Generation and PDA Helpers
+    - [x] 3.1 Regenerate TypeScript client from harvverse IDL
         - Run `pnpm anchor:build` to produce the harvverse IDL JSON
         - Update Codama config to point to `harvverse` IDL instead of `vault`
         - Run `pnpm codama:js` to generate `packages/solana-client/src/generated/harvverse/`
@@ -83,29 +83,29 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Update `package.json` exports map to reference `generated/harvverse`
         - _Requirements: 4.1, 4.7_
 
-    - [ ] 3.2 Implement PDA derivation helper functions
+    - [x] 3.2 Implement PDA derivation helper functions
         - Create `packages/solana-client/src/harvverse/pda.ts` with functions: `deriveUserRolePda`, `deriveFarmerProfilePda`, `derivePartnerProfilePda`, `deriveLotPda`, `derivePartnershipPda`, `deriveMilestonePda`, `deriveSettlementReceiptPda`, `deriveProgramConfigPda`
         - Each function uses `getProgramDerivedAddress` from `@solana/kit` with the correct seeds from the PDA table
         - Export a default program ID constant from `packages/solana-client/src/harvverse/constants.ts`
         - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 10.5, 15.5_
 
-    - [ ] 3.3 Implement account fetcher functions
+    - [x] 3.3 Implement account fetcher functions
         - Create `packages/solana-client/src/harvverse/fetchers.ts` with functions: `fetchUserRole`, `fetchLot`, `fetchPartnership`, `fetchFarmerProfile`, `fetchPartnerProfile`
         - Each fetcher derives the PDA, fetches the account data, decodes using the generated codec, and returns the typed account or null
         - _Requirements: 4.5_
 
-    - [ ] 3.4 Implement transaction builder functions
+    - [x] 3.4 Implement transaction builder functions
         - Create `packages/solana-client/src/harvverse/transactions.ts` with builders: `buildRegisterRoleTx`, `buildCreateFarmerProfileTx`, `buildCreatePartnerProfileTx`, `buildCreateLotTx`, `buildPublishLotTx`, `buildUpdateLotHashesTx`, `buildReservePartnershipTx`, `buildRecordSettlementTx`
         - Each builder constructs the instruction with correct accounts and data, wraps in a transaction message
         - _Requirements: 4.7_
 
-    - [ ] 3.5 Implement manifest hash utilities
+    - [x] 3.5 Implement manifest hash utilities
         - Create `packages/solana-client/src/harvverse/hash.ts` with functions: `canonicalJson`, `computeManifestHash`, `computeManifestHashHex`
         - `canonicalJson` sorts keys recursively and produces deterministic JSON string
         - `computeManifestHash` applies SHA-256 to the canonical JSON bytes and returns `Uint8Array`
         - _Requirements: 4.8, 4.9, 14.1, 14.2, 14.3, 14.4_
 
-    - [ ] 3.6 Create harvverse barrel export and types
+    - [x] 3.6 Create harvverse barrel export and types
         - Create `packages/solana-client/src/harvverse/types.ts` with shared TypeScript interfaces: `UserRole`, `Lot`, `Partnership`, `FarmerProfile`, `PartnerProfile`, `CreateLotTxInput`, `PublishLotTxInput`, `ReservePartnershipTxInput`, etc.
         - Create `packages/solana-client/src/harvverse/index.ts` re-exporting all modules (pda, fetchers, transactions, hash, constants, types)
         - Update `packages/solana-client/src/index.ts` to export `./harvverse`
@@ -118,13 +118,13 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Test all PDA derivation functions with known inputs produce expected addresses
         - _Requirements: 4.6, 4.9_
 
-- [ ]   4. Checkpoint — Solana client package builds and type-checks
+- [x]   4. Checkpoint — Solana client package builds and type-checks
     - Run `pnpm build` to verify the full workspace builds
     - Run `pnpm typecheck` to verify no type errors
     - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]   5. Convex Backend Setup and Schema
-    - [ ] 5.1 Initialize Convex in the workspace
+- [-] 5. Convex Backend Setup and Schema
+    - [-] 5.1 Initialize Convex in the workspace
         - Run `npx convex init` at the workspace root to create the `convex/` directory with `_generated/` and `tsconfig.json`
         - Add `convex` dependency to the root or `apps/native` package.json as appropriate
         - Configure Convex project URL in environment (`.env.local` or app config)

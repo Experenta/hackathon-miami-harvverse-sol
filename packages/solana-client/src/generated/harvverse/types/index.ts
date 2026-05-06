@@ -6,5 +6,6 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from "./instructions";
-export * from "./programs";
+export * from "./lotStatus";
+export * from "./partnershipStatus";
+export * from "./roleKind";
