@@ -23,7 +23,7 @@ export async function findSettlementReceiptPda(
   config: { programAddress?: Address | undefined } = {},
 ): Promise<ProgramDerivedAddress> {
   const {
-    programAddress = "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP" as Address<"Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP">,
+    programAddress = "F7MaYgo1YqQdJPN41ZM4NzikhBYNAjQ21vMRoGfQWDu4" as Address<"F7MaYgo1YqQdJPN41ZM4NzikhBYNAjQ21vMRoGfQWDu4">,
   } = config;
   return await getProgramDerivedAddress({
     programAddress,

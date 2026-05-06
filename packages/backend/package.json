@@ -33,7 +33,12 @@
     "typecheck": "tsc --noEmit -p convex"
   },
   "dependencies": {
-    "convex": "^1.37.0"
+    "@ai-sdk/anthropic": "^3.0.75",
+    "@ai-sdk/openai": "^3.0.62",
+    "@convex-dev/agent": "^0.6.1",
+    "ai": "^6.0.175",
+    "convex": "^1.37.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "5.9.2"

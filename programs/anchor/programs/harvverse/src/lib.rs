@@ -16,7 +16,7 @@ pub use instructions::register_role::*;
 pub use instructions::reserve_partnership::*;
 pub use instructions::update_lot_hashes::*;
 
-declare_id!("Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP");
+declare_id!("F7MaYgo1YqQdJPN41ZM4NzikhBYNAjQ21vMRoGfQWDu4");
 
 /// Input struct for create_lot instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
