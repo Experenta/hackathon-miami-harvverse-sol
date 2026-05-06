@@ -1,53 +1,48 @@
-# Design Document: Solana Mobile App (Harvverse)
+# Design Document: Harvverse Solana Mobile App
 
 ## Overview
 
-This design covers the Harvverse Solana Mobile App — a hackathon deliverable implementing on-chain role registration, a coffee lot marketplace, and partnership settlement on Solana devnet. The system combines an Anchor program for on-chain state, a Convex backend for off-chain mutable data, and an Expo React Native Android app using Mobile Wallet Adapter (MWA).
+Harvverse is a Solana Mobile dApp for connecting coffee farmers with investment partners through on-chain role registration, lot marketplace, and partnership settlement. The system uses a hybrid architecture: Solana devnet stores compact role, lot, and partnership state as the source of truth, while Convex provides the off-chain backend for rich data (profiles, media, plans, sensor snapshots). The Expo React Native Android app connects via Mobile Wallet Adapter (MWA) and routes users deterministically based on their on-chain role PDA.
 
-**Key design decisions:**
+The design replaces the existing template Vault program at `Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP` with a new `harvverse` Anchor program. The `@repo/solana-client` package is extended with Codama-generated client code, PDA derivation helpers, transaction builders, and manifest hash utilities. The native app is restructured from a flat `app/index.tsx` into a full expo-router layout with role-based route groups.
 
-1. **New `harvverse` program alongside existing `vault`** — The vault program remains untouched. A new `harvverse` program is added under `programs/anchor/programs/harvverse/` with its own program ID. This avoids breaking existing generated clients and allows independent deployment.
+**Monorepo structure:** The Convex backend is the `@havverse/backend` workspace package at `packages/backend/`. It is already initialized and wired into `apps/native` as a workspace dependency. Convex functions live in `packages/backend/convex/`; the native app imports them via `@havverse/backend/convex/_generated/api`.
 
-2. **Convex project at repo root** — A `convex/` directory at the workspace root, with its own `package.json` in the Turborepo workspace. The native app imports the Convex client directly.
-
-3. **`@repo/solana-client` extended with Harvverse module** — Codama generates a `harvverse` client alongside the existing `vault` client under `src/generated/harvverse/`. PDA helpers and transaction builders are added as hand-written wrappers.
-
-4. **State management: React Query + Convex subscriptions** — On-chain reads use React Query with manual invalidation after transactions. Off-chain reads use Convex's real-time subscriptions via `useQuery`.
-
-5. **Transaction construction via `@solana/kit`** — All transactions are built using `@solana/kit` instruction builders from the Codama-generated client, then signed via MWA.
+AI agent chat and x402 paid endpoints are explicitly out of scope for this design.
 
 ## Architecture
+
+### High-Level System Diagram
 
 ```mermaid
 graph TB
     subgraph "Mobile Device"
-        APP[apps/native<br/>Expo React Native]
-        WALLET[MWA Wallet App<br/>e.g. Phantom]
+        APP[Expo React Native App<br/>apps/native]
+        MWA_WALLET[MWA-Compatible Wallet<br/>e.g. Phantom, Solflare]
     end
 
     subgraph "Solana Devnet"
-        HARVVERSE[Harvverse Program<br/>Role, Lot, Partnership PDAs]
-        VAULT[Vault Program<br/>existing, unchanged]
+        PROGRAM[Harvverse Anchor Program<br/>programs/anchor]
         RPC[Solana RPC<br/>api.devnet.solana.com]
     end
 
     subgraph "Convex Cloud"
-        CONVEX_DB[(Convex Database<br/>users, lots, partnerships,<br/>profiles, media, sensors)]
-        CONVEX_FN[Convex Functions<br/>queries, mutations, actions]
+        CONVEX_DB[(Convex Database<br/>9 tables)]
+        CONVEX_FN[Convex Functions<br/>queries/mutations/actions]
+        CONVEX_STORAGE[Convex File Storage<br/>lot media]
     end
 
     subgraph "Shared Packages"
-        SOL_CLIENT["@repo/solana-client<br/>Codama generated client<br/>PDA helpers, tx builders"]
+        CLIENT[@repo/solana-client<br/>PDA helpers, tx builders,<br/>Codama-generated client]
     end
 
-    APP -->|MWA protocol| WALLET
-    APP -->|React Query| RPC
-    APP -->|useQuery/useMutation| CONVEX_FN
-    APP -->|import| SOL_CLIENT
-    SOL_CLIENT -->|RPC calls| RPC
-    RPC -->|read/write| HARVVERSE
-    CONVEX_FN -->|CRUD| CONVEX_DB
-    WALLET -->|sign & send| RPC
+    APP <-->|MWA Protocol| MWA_WALLET
+    APP -->|Read/Write| CONVEX_FN
+    CONVEX_FN --> CONVEX_DB
+    CONVEX_FN --> CONVEX_STORAGE
+    APP -->|via CLIENT| RPC
+    RPC --> PROGRAM
+    CLIENT -.->|used by| APP
 ```
 
 ### Data Flow: Wallet Connect → Role Check → Routing
@@ -61,21 +56,23 @@ sequenceDiagram
     participant Convex
 
     User->>App: Launch app
-    App->>MWA: authorize()
-    MWA-->>App: wallet address
+    App->>App: Check connected wallet state
+    alt No wallet connected
+        App->>User: Show connect screen
+        User->>App: Tap "Connect Wallet"
+        App->>MWA: authorize()
+        MWA->>User: Approve connection
+        User->>MWA: Approve
+        MWA->>App: Return wallet address
+    end
     App->>RPC: fetchUserRole(wallet)
-    alt No UserRole PDA
-        App->>User: Show role selection
-        User->>App: Select Farmer/Partner
-        App->>MWA: signTransaction(register_role)
-        MWA-->>App: signed tx
-        App->>RPC: sendTransaction
-        RPC-->>App: confirmed
-        App->>Convex: users.recordRoleRegistration
-        App->>RPC: refetch UserRole PDA
-        App->>User: Route to dashboard
-    else UserRole exists
-        App->>User: Route to Farmer/Partner dashboard
+    alt Role PDA exists
+        RPC->>App: UserRole { role: Farmer|Partner }
+        App->>Convex: users.upsertAfterWalletConnect(wallet)
+        App->>App: Route to Farmer/Partner dashboard
+    else No Role PDA
+        RPC->>App: null
+        App->>User: Show role selection screen
     end
 ```
 
@@ -89,15 +86,19 @@ sequenceDiagram
     participant MWA as MWA Wallet
     participant RPC as Solana RPC
 
-    Farmer->>App: Create lot / Autofill
-    App->>Convex: lots.createDraft(lotData)
-    Convex-->>App: draft lot record
+    Farmer->>App: Tap "Create lot"
+    Farmer->>App: Fill form (or tap Autofill)
+    App->>Convex: lots.createDraft(input)
+    Convex->>App: Draft lot saved
     Farmer->>App: Tap "Publish lot"
-    App->>App: computeManifestHashes()
-    App->>MWA: signTransaction(create_lot + publish_lot)
-    MWA-->>App: signed tx
-    App->>RPC: sendTransaction
-    RPC-->>App: confirmed (lot PDA created)
+    App->>App: Compute manifest hashes
+    App->>App: Build create_lot + publish_lot tx
+    App->>MWA: signAndSendTransaction(tx)
+    MWA->>Farmer: Approve transaction
+    Farmer->>MWA: Approve
+    MWA->>RPC: Submit transaction
+    RPC->>MWA: Signature
+    MWA->>App: Confirmed signature
     App->>Convex: lots.recordOnChainLot(lotCode, lotPda, tx)
     App->>Convex: lots.markPublished(lotCode, tx)
     App->>Farmer: Show published lot with PDA
@@ -113,545 +114,517 @@ sequenceDiagram
     participant MWA as MWA Wallet
     participant RPC as Solana RPC
 
-    Partner->>App: Browse catalog, select lot
-    App->>Convex: lots.getByCode(lotCode)
-    App->>RPC: fetch Lot PDA (verify on-chain)
+    Partner->>App: Browse lot catalog
+    App->>Convex: lots.listPublished()
+    Convex->>App: Published lots
+    Partner->>App: Tap lot card
+    App->>RPC: Fetch Lot PDA (verify on-chain)
+    App->>Partner: Show lot detail + settlement preview
     Partner->>App: Tap "Reserve partnership"
-    App->>App: computeTermsHash()
-    App->>Convex: partnerships.createPendingReservation
-    App->>MWA: signTransaction(reserve_partnership)
-    MWA-->>App: signed tx
-    App->>RPC: sendTransaction
-    RPC-->>App: confirmed
-    App->>Convex: partnerships.recordReservationTx
+    App->>App: Compute terms hash
+    App->>App: Build reserve_partnership tx
+    App->>MWA: signAndSendTransaction(tx)
+    MWA->>Partner: Approve transaction
+    Partner->>MWA: Approve
+    MWA->>RPC: Submit transaction
+    RPC->>MWA: Signature
+    MWA->>App: Confirmed signature
+    App->>Convex: partnerships.createPendingReservation(input)
+    App->>Convex: partnerships.recordReservationTx(id, pda, tx)
     App->>Partner: Show partnership receipt
 ```
 
 ## Components and Interfaces
 
-### Anchor Program Module Structure
+### 1. Anchor Program (`programs/anchor/programs/harvverse`)
+
+Replaces the existing Vault program. A single Anchor program with 10 instructions, 8 account types, 6 events, and 11 custom errors.
+
+**Directory Structure:**
 
 ```
-programs/anchor/programs/harvverse/
+programs/anchor/
+├── Anchor.toml
 ├── Cargo.toml
+├── package.json
+└── programs/
+    └── harvverse/
+        ├── Cargo.toml
+        └── src/
+            ├── lib.rs              # Program entry, declare_id!, mod declarations
+            ├── state/
+            │   ├── mod.rs
+            │   ├── program_config.rs
+            │   ├── user_role.rs
+            │   ├── farmer_profile.rs
+            │   ├── partner_profile.rs
+            │   ├── lot.rs
+            │   ├── partnership.rs
+            │   ├── milestone_receipt.rs
+            │   └── settlement_receipt.rs
+            ├── instructions/
+            │   ├── mod.rs
+            │   ├── initialize_config.rs
+            │   ├── register_role.rs
+            │   ├── create_farmer_profile.rs
+            │   ├── create_partner_profile.rs
+            │   ├── create_lot.rs
+            │   ├── publish_lot.rs
+            │   ├── update_lot_hashes.rs
+            │   ├── reserve_partnership.rs
+            │   ├── record_milestone.rs
+            │   └── record_settlement.rs
+            ├── events.rs
+            └── errors.rs
+```
+
+**Key Interfaces (Instructions):**
+
+```rust
+// lib.rs
+#[program]
+pub mod harvverse {
+    pub fn initialize_config(ctx: Context<InitializeConfig>, treasury: Pubkey) -> Result<()>;
+    pub fn register_role(ctx: Context<RegisterRole>, role: RoleKind) -> Result<()>;
+    pub fn create_farmer_profile(ctx: Context<CreateFarmerProfile>, display_name_hash: [u8; 32], metadata_uri_hash: [u8; 32]) -> Result<()>;
+    pub fn create_partner_profile(ctx: Context<CreatePartnerProfile>, display_name_hash: [u8; 32], metadata_uri_hash: [u8; 32]) -> Result<()>;
+    pub fn create_lot(ctx: Context<CreateLot>, input: CreateLotInput) -> Result<()>;
+    pub fn publish_lot(ctx: Context<PublishLot>) -> Result<()>;
+    pub fn update_lot_hashes(ctx: Context<UpdateLotHashes>, input: UpdateLotHashesInput) -> Result<()>;
+    pub fn reserve_partnership(ctx: Context<ReservePartnership>, terms_hash: [u8; 32]) -> Result<()>;
+    pub fn record_milestone(ctx: Context<RecordMilestone>, milestone_index: u8, proof_hash: [u8; 32]) -> Result<()>;
+    pub fn record_settlement(ctx: Context<RecordSettlement>, input: SettlementInput) -> Result<()>;
+}
+```
+
+### 2. Solana Client Package (`packages/solana-client`)
+
+Extended with Harvverse-specific helpers alongside the Codama-generated client.
+
+**Directory Structure:**
+
+```
+packages/solana-client/
+├── package.json
+├── tsconfig.json
 └── src/
-    ├── lib.rs                    # Program entry, declare_id!, mod declarations
-    ├── state/
-    │   ├── mod.rs
-    │   ├── program_config.rs     # ProgramConfig account
-    │   ├── user_role.rs          # UserRole account + RoleKind enum
-    │   ├── farmer_profile.rs     # FarmerProfile account
-    │   ├── partner_profile.rs    # PartnerProfile account
-    │   ├── lot.rs                # Lot account + LotStatus enum
-    │   ├── partnership.rs        # Partnership account + PartnershipStatus enum
-    │   └── settlement_receipt.rs # SettlementReceipt account
-    ├── instructions/
-    │   ├── mod.rs
-    │   ├── initialize_config.rs
-    │   ├── register_role.rs
-    │   ├── create_farmer_profile.rs
-    │   ├── create_partner_profile.rs
-    │   ├── create_lot.rs
-    │   ├── publish_lot.rs
-    │   ├── update_lot_hashes.rs
-    │   ├── reserve_partnership.rs
-    │   └── record_settlement.rs
-    ├── errors.rs                 # HarvverseError enum
-    └── events.rs                 # All program events
+    ├── index.ts
+    ├── solana-client.ts          # Existing RPC client factory
+    ├── errors.ts                 # Existing error helpers
+    ├── explorer.ts               # Existing explorer URL helpers
+    ├── lamports.ts               # Existing lamport conversion
+    ├── generated/
+    │   └── harvverse/            # Codama-generated (replaces vault/)
+    │       ├── index.ts
+    │       ├── instructions/
+    │       ├── accounts/
+    │       ├── types/
+    │       ├── programs/
+    │       └── shared/
+    └── harvverse/
+        ├── index.ts              # Re-exports all harvverse helpers
+        ├── pda.ts                # PDA derivation functions
+        ├── transactions.ts       # Transaction builder functions
+        ├── fetchers.ts           # Account fetcher functions
+        ├── hash.ts               # Manifest hash utilities
+        ├── constants.ts          # Program ID, demo lot data
+        └── types.ts              # Shared TypeScript types
 ```
 
-### Solana Client Package Structure
-
-```
-packages/solana-client/src/
-├── index.ts                      # Re-exports all modules
-├── generated/
-│   ├── vault/                    # Existing vault client (unchanged)
-│   └── harvverse/                # Codama-generated harvverse client
-│       ├── index.ts
-│       ├── accounts/
-│       ├── instructions/
-│       ├── types/
-│       └── errors/
-├── harvverse/
-│   ├── index.ts                  # Re-exports PDA helpers + tx builders
-│   ├── pda.ts                    # PDA derivation functions
-│   ├── transactions.ts           # Transaction builder wrappers
-│   ├── fetchers.ts               # Account fetch helpers
-│   ├── hash.ts                   # Manifest hash computation
-│   └── constants.ts              # Program ID, demo lot data
-├── errors.ts                     # Existing
-├── explorer.ts                   # Existing
-├── lamports.ts                   # Existing
-└── solana-client.ts              # Existing
-```
-
-### Solana Client Interfaces
+**Key Interfaces:**
 
 ```typescript
-// packages/solana-client/src/harvverse/pda.ts
-import { Address, getProgramDerivedAddress } from "@solana/kit";
-
-export function deriveUserRolePda(wallet: Address): Promise<Address>;
-export function deriveFarmerProfilePda(farmer: Address): Promise<Address>;
-export function derivePartnerProfilePda(partner: Address): Promise<Address>;
+// pda.ts
+export function deriveUserRolePda(
+	wallet: Address,
+	programId?: Address,
+): Address;
+export function deriveFarmerProfilePda(
+	farmer: Address,
+	programId?: Address,
+): Address;
+export function derivePartnerProfilePda(
+	partner: Address,
+	programId?: Address,
+): Address;
 export function deriveLotPda(
 	farmer: Address,
 	lotIdHash: Uint8Array,
-): Promise<Address>;
+	programId?: Address,
+): Address;
 export function derivePartnershipPda(
 	lotPda: Address,
 	partner: Address,
-): Promise<Address>;
+	programId?: Address,
+): Address;
+export function deriveMilestonePda(
+	partnershipPda: Address,
+	milestoneIndex: number,
+	programId?: Address,
+): Address;
 export function deriveSettlementReceiptPda(
 	partnershipPda: Address,
-): Promise<Address>;
+	programId?: Address,
+): Address;
+export function deriveProgramConfigPda(programId?: Address): Address;
 
-// packages/solana-client/src/harvverse/fetchers.ts
-import { Rpc, Address } from "@solana/kit";
-
-export type UserRoleAccount = {
-	wallet: Address;
-	role: "farmer" | "partner";
-	createdAt: bigint;
-};
-
-export function fetchUserRole(
-	rpc: Rpc,
+// fetchers.ts
+export async function fetchUserRole(
+	rpc: SolanaClient,
 	wallet: Address,
-): Promise<UserRoleAccount | null>;
-export function fetchLot(rpc: Rpc, lotPda: Address): Promise<LotAccount | null>;
-export function fetchPartnership(
-	rpc: Rpc,
-	partnershipPda: Address,
-): Promise<PartnershipAccount | null>;
-
-// packages/solana-client/src/harvverse/transactions.ts
-import { Address, IInstruction } from "@solana/kit";
-
-export type RegisterRoleInput = {
-	wallet: Address;
-	role: "farmer" | "partner";
-};
-
-export type CreateLotInput = {
-	farmer: Address;
-	lotIdHash: Uint8Array;
-	metadataHash: Uint8Array;
-	planHash: Uint8Array;
-	mediaManifestHash: Uint8Array;
-	sensorManifestHash: Uint8Array;
-	ticketUsdcCents: bigint;
-	farmerShareBps: number;
-	partnerShareBps: number;
-};
-
-export type ReservePartnershipInput = {
-	partner: Address;
-	lotPda: Address;
-	farmer: Address;
-	termsHash: Uint8Array;
-	ticketUsdcCents: bigint;
-};
-
-export function buildRegisterRoleInstruction(
-	input: RegisterRoleInput,
-): IInstruction;
-export function buildCreateLotInstruction(input: CreateLotInput): IInstruction;
-export function buildPublishLotInstruction(
-	farmer: Address,
+): Promise<UserRole | null>;
+export async function fetchLot(
+	rpc: SolanaClient,
 	lotPda: Address,
-): IInstruction;
-export function buildReservePartnershipInstruction(
-	input: ReservePartnershipInput,
-): IInstruction;
-export function buildCreateFarmerProfileInstruction(
+): Promise<Lot | null>;
+export async function fetchPartnership(
+	rpc: SolanaClient,
+	partnershipPda: Address,
+): Promise<Partnership | null>;
+export async function fetchFarmerProfile(
+	rpc: SolanaClient,
 	farmer: Address,
-	metadataHash: Uint8Array,
-): IInstruction;
-export function buildCreatePartnerProfileInstruction(
-	partner: Address,
-	metadataHash: Uint8Array,
-): IInstruction;
+): Promise<FarmerProfile | null>;
 
-// packages/solana-client/src/harvverse/hash.ts
+// transactions.ts
+export function buildRegisterRoleTx(
+	role: "farmer" | "partner",
+	wallet: Address,
+): TransactionMessage;
+export function buildCreateFarmerProfileTx(
+	input: CreateFarmerProfileInput,
+): TransactionMessage;
+export function buildCreatePartnerProfileTx(
+	input: CreatePartnerProfileInput,
+): TransactionMessage;
+export function buildCreateLotTx(input: CreateLotTxInput): TransactionMessage;
+export function buildPublishLotTx(input: PublishLotTxInput): TransactionMessage;
+export function buildReservePartnershipTx(
+	input: ReservePartnershipTxInput,
+): TransactionMessage;
+export function buildRecordSettlementTx(
+	input: RecordSettlementTxInput,
+): TransactionMessage;
+
+// hash.ts
 export function computeManifestHash(
 	payload: Record<string, unknown>,
 ): Uint8Array;
-export function computeTermsHash(terms: {
-	lotPda: string;
-	farmerWallet: string;
-	partnerWallet: string;
-	ticketUsdcCents: number;
-	farmerShareBps: number;
-	partnerShareBps: number;
-	metadataHash: string;
-	planHash: string;
-	timestamp: number;
-}): Uint8Array;
+export function computeManifestHashHex(
+	payload: Record<string, unknown>,
+): string;
+export function canonicalJson(obj: unknown): string;
 ```
 
-### Expo Router File Structure
+### 3. Convex Backend (`packages/backend/`)
+
+The Convex backend lives in the `packages/backend/` workspace package (`@havverse/backend`). It is **already initialized** in the monorepo — `npx convex init` has been run and the package is wired as a workspace dependency in `apps/native`.
+
+**Monorepo integration:**
+
+- Package name: `@havverse/backend`
+- Native app imports: `import { api } from "@havverse/backend/convex/_generated/api"`
+- Dev command (from root): `pnpm dev:convex`
+- Deploy command (from root): `pnpm convex:setup`
+- Codegen command (from root): `pnpm convex:codegen`
+- AI guidelines: `packages/backend/convex/_generated/ai/guidelines.md` — **always read before writing Convex code**
+
+**Directory Structure:**
 
 ```
-apps/native/app/
-├── _layout.tsx                           # Root layout with AppProviders
-├── index.tsx                             # Entry: redirect based on auth state
-├── connect-wallet.tsx                    # Wallet connection screen
-├── role-select.tsx                       # Role selection screen
-├── (farmer)/
-│   ├── _layout.tsx                       # Farmer tab/stack layout with role guard
-│   ├── home.tsx                          # Farmer home dashboard
-│   ├── lots/
-│   │   ├── index.tsx                     # Farmer lots list
-│   │   ├── new.tsx                       # Lot creation/editor
-│   │   └── [lotCode]/
-│   │       ├── edit.tsx                  # Edit existing lot
-│   │       └── publish-review.tsx        # Publish review + sign
-│   └── profile.tsx                       # Farmer profile creation
-├── (partner)/
-│   ├── _layout.tsx                       # Partner tab/stack layout with role guard
-│   ├── home.tsx                          # Partner home dashboard
-│   ├── catalog.tsx                       # Published lots catalog
-│   ├── lots/
-│   │   └── [lotCode]/
-│   │       ├── index.tsx                 # Lot detail view
-│   │       └── reserve.tsx              # Partnership reservation review + sign
-│   └── partnerships/
-│       └── [partnershipId]/
-│           ├── index.tsx                 # Partnership receipt
-│           └── settlement.tsx            # Settlement preview
-└── +not-found.tsx                        # 404 fallback
+packages/backend/
+├── .env.example                  # CONVEX_DEPLOYMENT, CONVEX_URL
+├── .env.local                    # (gitignored) actual values
+├── package.json                  # name: @havverse/backend
+├── convex/
+│   ├── _generated/               # Auto-generated by Convex CLI (committed)
+│   │   ├── ai/
+│   │   │   └── guidelines.md     # Convex AI coding guidelines
+│   │   ├── api.d.ts
+│   │   ├── api.js
+│   │   ├── dataModel.d.ts
+│   │   └── server.d.ts
+│   ├── schema.ts                 # Database schema (9 tables)
+│   ├── users.ts                  # User queries/mutations
+│   ├── lots.ts                   # Lot queries/mutations
+│   ├── partnerships.ts           # Partnership queries/mutations
+│   ├── farmerProfiles.ts         # Farmer profile mutations
+│   ├── partnerProfiles.ts        # Partner profile mutations
+│   ├── lotMedia.ts               # Media upload/query
+│   ├── sensorSnapshots.ts        # Sensor data mutations
+│   ├── agronomicPlans.ts         # Plan mutations
+│   ├── audit.ts                  # Audit event recording
+│   ├── status.ts                 # Health check query (already exists)
+│   └── tsconfig.json
 ```
 
-### React Native Component Hierarchy
-
-```
-AppProviders
-├── QueryClientProvider (React Query)
-├── NetworkProvider (Solana cluster selection)
-├── MobileWalletProvider (MWA connection)
-├── ConvexProvider (Convex client)
-└── RoleProvider (on-chain role state context)
-    └── Stack/Tabs (expo-router)
-```
-
-### Hook Interfaces
+**Key Function Signatures:**
 
 ```typescript
-// hooks/useWalletRole.ts — fetches on-chain role after wallet connect
-export function useWalletRole(): {
-	role: "farmer" | "partner" | "unregistered" | null;
-	rolePda: string | null;
+// users.ts
+export const getByWallet = query({ args: { wallet: v.string() }, handler: ... });
+export const upsertAfterWalletConnect = mutation({ args: { wallet: v.string() }, handler: ... });
+export const recordRoleRegistration = mutation({ args: { wallet, role, rolePda, roleTx }, handler: ... });
+
+// lots.ts
+export const listPublished = query({ args: {}, handler: ... });
+export const getByCode = query({ args: { lotCode: v.string() }, handler: ... });
+export const listByFarmer = query({ args: { wallet: v.string() }, handler: ... });
+export const createDraft = mutation({ args: { ...lotFields }, handler: ... });
+export const applyDemoAutofill = mutation({ args: { lotCode: v.string() }, handler: ... });
+export const recordOnChainLot = mutation({ args: { lotCode, lotPda, tx }, handler: ... });
+export const markPublished = mutation({ args: { lotCode, tx }, handler: ... });
+
+// partnerships.ts
+export const listByPartner = query({ args: { wallet: v.string() }, handler: ... });
+export const createPendingReservation = mutation({ args: { ...partnershipFields }, handler: ... });
+export const recordReservationTx = mutation({ args: { partnershipId, partnershipPda, tx }, handler: ... });
+```
+
+### 4. Native App (`apps/native`)
+
+Restructured from flat layout to expo-router with route groups.
+
+**Directory Structure:**
+
+```
+apps/native/
+├── app/
+│   ├── _layout.tsx                    # Root layout with providers
+│   ├── index.tsx                      # Redirect based on auth/role state
+│   ├── connect-wallet.tsx             # Wallet connection screen
+│   ├── role-select.tsx                # Role selection screen
+│   ├── (farmer)/
+│   │   ├── _layout.tsx                # Farmer tab/stack layout
+│   │   ├── home.tsx                   # Farmer home dashboard
+│   │   ├── profile.tsx                # Farmer profile creation/view
+│   │   ├── lots/
+│   │   │   ├── index.tsx              # Farmer lot list
+│   │   │   ├── new.tsx                # Create new lot
+│   │   │   └── [lotCode]/
+│   │   │       ├── edit.tsx           # Edit lot draft
+│   │   │       └── publish-review.tsx # Publish review + sign
+│   │   └── lots/[lotCode].tsx         # Lot detail (farmer view)
+│   └── (partner)/
+│       ├── _layout.tsx                # Partner tab/stack layout
+│       ├── home.tsx                   # Partner home dashboard
+│       ├── catalog.tsx                # Browse published lots
+│       ├── lots/
+│       │   └── [lotCode]/
+│       │       ├── index.tsx          # Lot detail (partner view)
+│       │       └── reserve.tsx        # Reserve partnership flow
+│       └── partnerships/
+│           └── [partnershipId]/
+│               ├── index.tsx          # Partnership detail
+│               └── settlement.tsx     # Settlement preview
+├── components/
+│   ├── app-providers.tsx              # Updated with Convex + role context
+│   ├── role-guard.tsx                 # Route guard component
+│   ├── loading-screen.tsx             # Full-screen loading indicator
+│   └── ui/                            # Shared UI components
+│       ├── button.tsx
+│       ├── card.tsx
+│       ├── form-field.tsx
+│       └── tx-status.tsx
+├── features/
+│   ├── wallet/
+│   │   ├── use-wallet-connection.ts   # MWA connection hook
+│   │   └── wallet-button.tsx
+│   ├── role/
+│   │   ├── use-role.ts                # On-chain role fetching hook
+│   │   ├── role-context.tsx           # Role state context
+│   │   └── role-selector.tsx          # Role selection UI
+│   ├── farmer/
+│   │   ├── use-farmer-lots.ts         # Convex lot queries
+│   │   ├── lot-form.tsx               # Lot editor form component
+│   │   ├── demo-autofill.ts           # Autofill data constants
+│   │   └── publish-flow.ts            # Hash computation + tx building
+│   └── partner/
+│       ├── use-lot-catalog.ts          # Published lots query
+│       ├── use-partnership.ts          # Partnership state
+│       ├── settlement-preview.tsx      # Settlement math display
+│       └── reserve-flow.ts            # Terms hash + tx building
+├── hooks/
+│   ├── use-solana-client.ts           # Solana RPC client hook
+│   ├── use-convex.ts                  # Convex client hook
+│   └── use-transaction.ts            # MWA sign+send helper
+├── constants/
+│   ├── app-config.ts                  # Updated with Convex URL
+│   ├── app-styles.ts
+│   └── demo-data.ts                   # Zafiro autofill constants
+└── utils/
+    ├── ellipsify.ts
+    └── lamports-to-sol.ts
+```
+
+**Provider Hierarchy:**
+
+```typescript
+// app/_layout.tsx — Provider nesting order
+<QueryClientProvider>
+  <ConvexProvider>
+    <NetworkProvider>
+      <MobileWalletProvider>
+        <RoleProvider>
+          <Stack />
+        </RoleProvider>
+      </MobileWalletProvider>
+    </NetworkProvider>
+  </ConvexProvider>
+</QueryClientProvider>
+```
+
+**Key Hooks:**
+
+```typescript
+// features/role/use-role.ts
+export function useRole(): {
+	role: "farmer" | "partner" | null;
 	isLoading: boolean;
 	error: Error | null;
 	refetch: () => void;
 };
 
-// hooks/useRegisterRole.ts — constructs and sends register_role tx
-export function useRegisterRole(): {
-	registerRole: (role: "farmer" | "partner") => Promise<string>; // returns tx sig
+// hooks/use-transaction.ts
+export function useTransaction(): {
+	signAndSend: (tx: TransactionMessage) => Promise<{ signature: string }>;
 	isPending: boolean;
 	error: Error | null;
 };
 
-// hooks/useFarmerLots.ts — Convex subscription for farmer's lots
+// features/farmer/use-farmer-lots.ts
 export function useFarmerLots(wallet: string): {
-	lots: LotRecord[];
+	lots: Lot[];
 	isLoading: boolean;
 };
-
-// hooks/useCreateLot.ts — creates draft lot in Convex
-export function useCreateLot(): {
-	createDraft: (input: CreateLotDraftInput) => Promise<string>; // returns lotCode
-	isPending: boolean;
-};
-
-// hooks/usePublishLot.ts — computes hashes, sends create_lot + publish_lot tx
-export function usePublishLot(): {
-	publishLot: (lotCode: string) => Promise<string>; // returns tx sig
-	isPending: boolean;
-	error: Error | null;
-};
-
-// hooks/usePublishedLots.ts — Convex subscription for published lots catalog
-export function usePublishedLots(): {
-	lots: LotRecord[];
-	isLoading: boolean;
-};
-
-// hooks/useReservePartnership.ts — constructs and sends reserve_partnership tx
-export function useReservePartnership(): {
-	reserve: (input: ReserveInput) => Promise<string>; // returns tx sig
-	isPending: boolean;
-	error: Error | null;
-};
-
-// hooks/useLotOnChainVerification.ts — verifies Convex lot data against on-chain PDA
-export function useLotOnChainVerification(lotPda: string | null): {
-	isVerified: boolean;
-	isLoading: boolean;
-	onChainData: LotAccount | null;
-};
 ```
-
-### Convex Backend Structure
-
-```
-convex/
-├── _generated/                   # Auto-generated by Convex CLI
-├── schema.ts                     # Full schema definition
-├── users.ts                      # User queries and mutations
-├── lots.ts                       # Lot queries and mutations
-├── partnerships.ts               # Partnership queries and mutations
-├── farmerProfiles.ts             # Farmer profile mutations
-├── partnerProfiles.ts            # Partner profile mutations
-├── sensorSnapshots.ts            # Sensor snapshot mutations
-├── agronomicPlans.ts             # Agronomic plan mutations
-├── auditEvents.ts                # Audit event mutations
-├── convex.config.ts              # App config (no agent component for this spec)
-└── package.json                  # Convex dependencies
-```
-
-> **Note:** The AI Agent, x402 gateway, and chat functionality are explicitly excluded from this spec per the requirements document. The Convex schema and functions here cover only the tables and functions needed for the mobile app's core flows.
 
 ## Data Models
 
-### On-Chain Account Definitions (Anchor/Rust)
+### On-Chain Account Types
 
-#### ProgramConfig
+```mermaid
+classDiagram
+    class ProgramConfig {
+        +Pubkey authority
+        +Pubkey treasury
+        +bool role_registration_enabled
+        +u8 bump
+    }
 
-```rust
-// seeds = ["config"]
-#[account]
-pub struct ProgramConfig {
-    pub authority: Pubkey,        // 32 bytes
-    pub treasury: Pubkey,         // 32 bytes
-    pub role_registration_enabled: bool, // 1 byte
-    pub bump: u8,                 // 1 byte
-}
-// Space: 8 (discriminator) + 32 + 32 + 1 + 1 = 74 bytes
+    class UserRole {
+        +Pubkey wallet
+        +RoleKind role
+        +i64 created_at
+        +u8 bump
+    }
+
+    class FarmerProfile {
+        +Pubkey farmer
+        +[u8;32] display_name_hash
+        +[u8;32] metadata_uri_hash
+        +i64 created_at
+        +u8 bump
+    }
+
+    class PartnerProfile {
+        +Pubkey partner
+        +[u8;32] display_name_hash
+        +[u8;32] metadata_uri_hash
+        +i64 created_at
+        +u8 bump
+    }
+
+    class Lot {
+        +Pubkey farmer
+        +[u8;32] lot_id_hash
+        +[u8;32] metadata_hash
+        +[u8;32] plan_hash
+        +[u8;32] media_manifest_hash
+        +[u8;32] sensor_manifest_hash
+        +u64 ticket_usdc_cents
+        +u16 farmer_share_bps
+        +u16 partner_share_bps
+        +LotStatus status
+        +i64 created_at
+        +i64 updated_at
+        +u8 bump
+    }
+
+    class Partnership {
+        +Pubkey lot
+        +Pubkey farmer
+        +Pubkey partner
+        +[u8;32] terms_hash
+        +u64 ticket_usdc_cents
+        +PartnershipStatus status
+        +i64 reserved_at
+        +u8 bump
+    }
+
+    class MilestoneReceipt {
+        +Pubkey partnership
+        +u8 milestone_index
+        +[u8;32] proof_hash
+        +Pubkey recorded_by
+        +i64 recorded_at
+        +u8 bump
+    }
+
+    class SettlementReceipt {
+        +Pubkey partnership
+        +u16 yield_qq
+        +u16 price_per_lb_cents
+        +u64 revenue_usdc_cents
+        +u64 cost_usdc_cents
+        +u64 profit_usdc_cents
+        +u64 farmer_share_usdc_cents
+        +u64 partner_share_usdc_cents
+        +[u8;32] settlement_hash
+        +i64 settled_at
+        +u8 bump
+    }
+
+    UserRole --> FarmerProfile : "Farmer creates"
+    UserRole --> PartnerProfile : "Partner creates"
+    FarmerProfile --> Lot : "Farmer owns"
+    Lot --> Partnership : "Partner reserves"
+    Partnership --> MilestoneReceipt : "Farmer records"
+    Partnership --> SettlementReceipt : "Final settlement"
 ```
 
-#### UserRole
+### State Machines
 
-```rust
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum RoleKind {
-    Farmer,
-    Partner,
-}
+**Lot Status:**
 
-// seeds = ["role", wallet]
-#[account]
-pub struct UserRole {
-    pub wallet: Pubkey,          // 32 bytes
-    pub role: RoleKind,          // 1 byte (enum)
-    pub created_at: i64,         // 8 bytes
-    pub bump: u8,                // 1 byte
-}
-// Space: 8 + 32 + 1 + 8 + 1 = 50 bytes
+```mermaid
+stateDiagram-v2
+    [*] --> Draft : create_lot
+    Draft --> Published : publish_lot
+    Draft --> Cancelled : cancel (future)
+    Published --> Reserved : reserve_partnership
+    Published --> Cancelled : cancel (future)
+    Reserved --> Settled : record_settlement
 ```
 
-#### FarmerProfile
+**Partnership Status:**
 
-```rust
-// seeds = ["farmer", farmer_wallet]
-#[account]
-pub struct FarmerProfile {
-    pub farmer: Pubkey,              // 32 bytes
-    pub display_name_hash: [u8; 32], // 32 bytes
-    pub metadata_uri_hash: [u8; 32], // 32 bytes
-    pub created_at: i64,             // 8 bytes
-    pub bump: u8,                    // 1 byte
-}
-// Space: 8 + 32 + 32 + 32 + 8 + 1 = 113 bytes
+```mermaid
+stateDiagram-v2
+    [*] --> Reserved : reserve_partnership
+    Reserved --> Settled : record_settlement
+    Reserved --> Cancelled : cancel (future)
 ```
 
-#### PartnerProfile
+**Role State:**
 
-```rust
-// seeds = ["partner", partner_wallet]
-#[account]
-pub struct PartnerProfile {
-    pub partner: Pubkey,             // 32 bytes
-    pub display_name_hash: [u8; 32], // 32 bytes
-    pub metadata_uri_hash: [u8; 32], // 32 bytes
-    pub created_at: i64,             // 8 bytes
-    pub bump: u8,                    // 1 byte
-}
-// Space: 8 + 32 + 32 + 32 + 8 + 1 = 113 bytes
+```mermaid
+stateDiagram-v2
+    [*] --> Farmer : register_role(Farmer)
+    [*] --> Partner : register_role(Partner)
 ```
 
-#### Lot
-
-```rust
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum LotStatus {
-    Draft,
-    Published,
-    Reserved,
-    InCycle,
-    Settled,
-    Cancelled,
-}
-
-// seeds = ["lot", farmer_wallet, lot_id_hash]
-#[account]
-pub struct Lot {
-    pub farmer: Pubkey,                  // 32 bytes
-    pub lot_id_hash: [u8; 32],           // 32 bytes
-    pub metadata_hash: [u8; 32],         // 32 bytes
-    pub plan_hash: [u8; 32],             // 32 bytes
-    pub media_manifest_hash: [u8; 32],   // 32 bytes
-    pub sensor_manifest_hash: [u8; 32],  // 32 bytes
-    pub ticket_usdc_cents: u64,          // 8 bytes
-    pub farmer_share_bps: u16,           // 2 bytes
-    pub partner_share_bps: u16,          // 2 bytes
-    pub status: LotStatus,               // 1 byte
-    pub created_at: i64,                 // 8 bytes
-    pub updated_at: i64,                 // 8 bytes
-    pub bump: u8,                        // 1 byte
-}
-// Space: 8 + 32 + 32 + 32 + 32 + 32 + 32 + 8 + 2 + 2 + 1 + 8 + 8 + 1 = 230 bytes
-```
-
-#### Partnership
-
-```rust
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum PartnershipStatus {
-    Reserved,
-    Active,
-    Settled,
-    Cancelled,
-}
-
-// seeds = ["partnership", lot_pda, partner_wallet]
-#[account]
-pub struct Partnership {
-    pub lot: Pubkey,                 // 32 bytes
-    pub farmer: Pubkey,              // 32 bytes
-    pub partner: Pubkey,             // 32 bytes
-    pub terms_hash: [u8; 32],        // 32 bytes
-    pub ticket_usdc_cents: u64,      // 8 bytes
-    pub status: PartnershipStatus,   // 1 byte
-    pub reserved_at: i64,            // 8 bytes
-    pub bump: u8,                    // 1 byte
-}
-// Space: 8 + 32 + 32 + 32 + 32 + 8 + 1 + 8 + 1 = 154 bytes
-```
-
-#### SettlementReceipt
-
-```rust
-// seeds = ["settlement", partnership_pda]
-#[account]
-pub struct SettlementReceipt {
-    pub partnership: Pubkey,             // 32 bytes
-    pub yield_qq: u16,                   // 2 bytes
-    pub price_per_lb_cents: u16,         // 2 bytes
-    pub revenue_usdc_cents: u64,         // 8 bytes
-    pub cost_usdc_cents: u64,            // 8 bytes
-    pub profit_usdc_cents: u64,          // 8 bytes
-    pub farmer_share_usdc_cents: u64,    // 8 bytes
-    pub partner_share_usdc_cents: u64,   // 8 bytes
-    pub settlement_hash: [u8; 32],       // 32 bytes
-    pub settled_at: i64,                 // 8 bytes
-    pub bump: u8,                        // 1 byte
-}
-// Space: 8 + 32 + 2 + 2 + 8 + 8 + 8 + 8 + 8 + 32 + 8 + 1 = 125 bytes
-```
-
-### PDA Derivation Seeds
-
-| Account           | Seeds                                      | Uniqueness Guarantee            |
-| ----------------- | ------------------------------------------ | ------------------------------- |
-| ProgramConfig     | `["config"]`                               | Singleton per program           |
-| UserRole          | `["role", wallet]`                         | One role per wallet             |
-| FarmerProfile     | `["farmer", farmer_wallet]`                | One profile per farmer          |
-| PartnerProfile    | `["partner", partner_wallet]`              | One profile per partner         |
-| Lot               | `["lot", farmer_wallet, lot_id_hash]`      | One lot per farmer+lot_id combo |
-| Partnership       | `["partnership", lot_pda, partner_wallet]` | One partnership per lot+partner |
-| SettlementReceipt | `["settlement", partnership_pda]`          | One settlement per partnership  |
-
-### Program Events
-
-```rust
-#[event]
-pub struct RoleRegistered {
-    pub wallet: Pubkey,
-    pub role: RoleKind,
-    pub created_at: i64,
-}
-
-#[event]
-pub struct LotCreated {
-    pub lot: Pubkey,
-    pub farmer: Pubkey,
-    pub lot_id_hash: [u8; 32],
-}
-
-#[event]
-pub struct LotPublished {
-    pub lot: Pubkey,
-    pub farmer: Pubkey,
-    pub updated_at: i64,
-}
-
-#[event]
-pub struct PartnershipReserved {
-    pub partnership: Pubkey,
-    pub lot: Pubkey,
-    pub farmer: Pubkey,
-    pub partner: Pubkey,
-    pub ticket_usdc_cents: u64,
-}
-
-#[event]
-pub struct SettlementRecorded {
-    pub partnership: Pubkey,
-    pub farmer_share_usdc_cents: u64,
-    pub partner_share_usdc_cents: u64,
-    pub settlement_hash: [u8; 32],
-}
-```
-
-### Program Errors
-
-```rust
-#[error_code]
-pub enum HarvverseError {
-    #[msg("Role already registered for this wallet")]
-    RoleAlreadyRegistered,
-
-    #[msg("Wallet does not have the required role")]
-    InvalidRole,
-
-    #[msg("Farmer profile is required")]
-    FarmerProfileMissing,
-
-    #[msg("Partner profile is required")]
-    PartnerProfileMissing,
-
-    #[msg("Lot status does not allow this operation")]
-    InvalidLotStatus,
-
-    #[msg("Partnership status does not allow this operation")]
-    InvalidPartnershipStatus,
-
-    #[msg("Share basis points must sum to 10000")]
-    InvalidShareSplit,
-
-    #[msg("Hash field cannot be zero")]
-    EmptyHash,
-
-    #[msg("Settlement math does not match expected values")]
-    InvalidSettlementMath,
-}
-```
-
-### Convex Schema (TypeScript)
+### Convex Schema (9 Tables)
 
 ```typescript
 // convex/schema.ts
@@ -713,10 +686,10 @@ export default defineSchema({
 		ticketUsdcCents: v.number(),
 		farmerShareBps: v.number(),
 		partnerShareBps: v.number(),
-		metadataHash: v.optional(v.string()),
-		planHash: v.optional(v.string()),
-		mediaManifestHash: v.optional(v.string()),
-		sensorManifestHash: v.optional(v.string()),
+		metadataHash: v.string(),
+		planHash: v.string(),
+		mediaManifestHash: v.string(),
+		sensorManifestHash: v.string(),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
@@ -770,7 +743,6 @@ export default defineSchema({
 		termsHash: v.string(),
 		reserveTx: v.optional(v.string()),
 		status: v.union(
-			v.literal("pending"),
 			v.literal("reserved"),
 			v.literal("active"),
 			v.literal("settled"),
@@ -793,185 +765,74 @@ export default defineSchema({
 });
 ```
 
-### Convex Function Signatures
+### PDA Seed Derivation Table
 
-#### Queries
+| Account           | Seeds                                             | Uniqueness                |
+| ----------------- | ------------------------------------------------- | ------------------------- |
+| ProgramConfig     | `["config"]`                                      | Singleton per program     |
+| UserRole          | `["role", wallet]`                                | One per wallet            |
+| FarmerProfile     | `["farmer", farmer_wallet]`                       | One per farmer            |
+| PartnerProfile    | `["partner", partner_wallet]`                     | One per partner           |
+| Lot               | `["lot", farmer_wallet, lot_id_hash]`             | One per farmer+lot combo  |
+| Partnership       | `["partnership", lot_pda, partner_wallet]`        | One per lot+partner combo |
+| MilestoneReceipt  | `["milestone", partnership_pda, milestone_index]` | One per partnership+index |
+| SettlementReceipt | `["settlement", partnership_pda]`                 | One per partnership       |
 
-```typescript
-// convex/users.ts
-export const getByWallet = query({
-  args: { wallet: v.string() },
-  returns: v.union(v.object({...}), v.null()),
-  handler: async (ctx, { wallet }) => { /* ... */ },
-});
-
-// convex/lots.ts
-export const listPublished = query({
-  args: {},
-  handler: async (ctx) => { /* returns lots with status "published" */ },
-});
-
-export const getByCode = query({
-  args: { lotCode: v.string() },
-  handler: async (ctx, { lotCode }) => { /* ... */ },
-});
-
-export const listByFarmer = query({
-  args: { wallet: v.string() },
-  handler: async (ctx, { wallet }) => { /* ... */ },
-});
-
-// convex/partnerships.ts
-export const listByPartner = query({
-  args: { wallet: v.string() },
-  handler: async (ctx, { wallet }) => { /* ... */ },
-});
-```
-
-#### Mutations
+### Manifest Hash Types
 
 ```typescript
-// convex/users.ts
-export const upsertAfterWalletConnect = mutation({
-	args: { wallet: v.string() },
-	handler: async (ctx, { wallet }) => {
-		// Idempotent: create if not exists, update updatedAt if exists
-	},
-});
-
-export const recordRoleRegistration = mutation({
-	args: {
-		wallet: v.string(),
-		role: v.union(v.literal("farmer"), v.literal("partner")),
-		rolePda: v.string(),
-		roleTx: v.string(),
-	},
-	handler: async (ctx, args) => {
-		/* ... */
-	},
-});
-
-// convex/lots.ts
-export const createDraft = mutation({
-	args: {
-		lotCode: v.string(),
-		farmerWallet: v.string(),
-		farmName: v.string(),
-		variety: v.string(),
-		region: v.string(),
-		country: v.string(),
-		latitude: v.number(),
-		longitude: v.number(),
-		altitudeMeters: v.number(),
-		areaManzanas: v.number(),
-		ticketUsdcCents: v.number(),
-		farmerShareBps: v.number(),
-		partnerShareBps: v.number(),
-	},
-	handler: async (ctx, args) => {
-		/* creates lot with status "draft" */
-	},
-});
-
-export const applyDemoAutofill = mutation({
-	args: { lotCode: v.string() },
-	handler: async (ctx, { lotCode }) => {
-		/* applies Zafiro demo data */
-	},
-});
-
-export const recordOnChainLot = mutation({
-	args: { lotCode: v.string(), lotPda: v.string(), tx: v.string() },
-	handler: async (ctx, args) => {
-		/* records PDA and tx sig */
-	},
-});
-
-export const markPublished = mutation({
-	args: { lotCode: v.string(), tx: v.string() },
-	handler: async (ctx, args) => {
-		/* sets status to "published" */
-	},
-});
-
-// convex/partnerships.ts
-export const createPendingReservation = mutation({
-	args: {
-		lotCode: v.string(),
-		lotPda: v.optional(v.string()),
-		farmerWallet: v.string(),
-		partnerWallet: v.string(),
-		termsHash: v.string(),
-	},
-	handler: async (ctx, args) => {
-		/* creates partnership with status "pending" */
-	},
-});
-
-export const recordReservationTx = mutation({
-	args: {
-		partnershipId: v.id("partnerships"),
-		partnershipPda: v.string(),
-		tx: v.string(),
-	},
-	handler: async (ctx, args) => {
-		/* records PDA, tx, sets status "reserved" */
-	},
-});
-```
-
-### Manifest Hash Computation Algorithm
-
-The `computeManifestHash` function produces a deterministic SHA-256 hash from any JSON-serializable object using canonical JSON (sorted keys, no whitespace):
-
-```typescript
-// packages/solana-client/src/harvverse/hash.ts
-import { createHash } from "crypto"; // or SubtleCrypto in browser/RN
-
-/**
- * Produces a canonical JSON string by recursively sorting object keys.
- * Arrays preserve order. Primitives are serialized directly.
- */
-function canonicalJson(obj: unknown): string {
-	if (obj === null || typeof obj !== "object") {
-		return JSON.stringify(obj);
-	}
-	if (Array.isArray(obj)) {
-		return "[" + obj.map(canonicalJson).join(",") + "]";
-	}
-	const sorted = Object.keys(obj as Record<string, unknown>).sort();
-	const entries = sorted.map(
-		(key) =>
-			JSON.stringify(key) +
-			":" +
-			canonicalJson((obj as Record<string, unknown>)[key]),
-	);
-	return "{" + entries.join(",") + "}";
+// Metadata manifest — hashed and stored on-chain as metadata_hash
+interface LotMetadataManifest {
+	lotCode: string;
+	farmName: string;
+	farmerWallet: string;
+	location: {
+		country: string;
+		region: string;
+		latitude: number;
+		longitude: number;
+		altitudeMeters: number;
+	};
+	variety: string;
+	areaManzanas: number;
 }
 
-/**
- * Computes SHA-256 hash of canonical JSON representation.
- * Returns 32-byte Uint8Array suitable for on-chain storage.
- */
-export function computeManifestHash(
-	payload: Record<string, unknown>,
-): Uint8Array {
-	const canonical = canonicalJson(payload);
-	const encoder = new TextEncoder();
-	const data = encoder.encode(canonical);
-	// Use SubtleCrypto for React Native compatibility
-	// Implementation uses react-native-quick-crypto or expo-crypto
-	const hashBuffer = sha256(data); // platform-specific SHA-256
-	return new Uint8Array(hashBuffer);
+// Plan manifest — hashed and stored on-chain as plan_hash
+interface PlanManifest {
+	lotCode: string;
+	planId: string;
+	planJson: unknown;
+}
+
+// Media manifest — hashed and stored on-chain as media_manifest_hash
+interface MediaManifest {
+	lotCode: string;
+	items: Array<{ storageId: string; kind: string; hash: string }>;
+}
+
+// Sensor manifest — hashed and stored on-chain as sensor_manifest_hash
+interface SensorManifest {
+	lotCode: string;
+	snapshots: Array<{
+		source: string;
+		temperatureC?: number;
+		humidityPct?: number;
+		soilPh?: number;
+		soilMoisturePct?: number;
+		hash: string;
+	}>;
+}
+
+// Terms manifest — hashed for partnership reservation
+interface TermsManifest {
+	lotPda: string;
+	farmerWallet: string;
+	partnerWallet: string;
+	ticketUsdcCents: number;
+	farmerShareBps: number;
+	partnerShareBps: number;
+	metadataHash: string;
+	planHash: string;
+	timestamp: number;
 }
 ```
-
-**Canonical JSON rules:**
-
-1. Object keys are sorted lexicographically at every nesting level
-2. No whitespace between tokens
-3. Arrays preserve element order
-4. Numbers use JSON default serialization (no trailing zeros)
-5. Strings are JSON-escaped
-
-This ensures that `computeManifestHash({ b: 1, a: 2 })` and `computeManifestHash({ a: 2, b: 1 })` produce identical hashes.

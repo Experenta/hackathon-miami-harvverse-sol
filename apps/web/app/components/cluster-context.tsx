@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import {
-  CLUSTERS,
+  CLUSTERS as SOLANA_CLUSTERS,
   getExplorerUrl,
   type ClusterMoniker,
 } from "@repo/solana-client";
@@ -21,17 +21,21 @@ type ClusterContextValue = {
 
 const ClusterContext = createContext<ClusterContextValue | null>(null);
 
+const WEB_CLUSTERS: ClusterMoniker[] = SOLANA_CLUSTERS.filter(
+  (cluster) => cluster !== "mainnet",
+);
 const STORAGE_KEY = "solana-cluster";
+
 function getInitialCluster(): ClusterMoniker {
   if (typeof window === "undefined") return "devnet";
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored && CLUSTERS.includes(stored as ClusterMoniker)) {
+  if (stored && WEB_CLUSTERS.includes(stored as ClusterMoniker)) {
     return stored as ClusterMoniker;
   }
   return "devnet";
 }
 
-export { CLUSTERS };
+export { WEB_CLUSTERS as CLUSTERS };
 
 export function ClusterProvider({ children }: { children: ReactNode }) {
   const [cluster, setClusterState] =

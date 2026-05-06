@@ -13,6 +13,7 @@ const localnetUrl = "localhost";
 const validatorUrl = "http://localhost:8899";
 const keypairPath = `${process.env.HOME}/.config/solana/id.json`;
 const resetLedger = process.env.LOCALNET_RESET !== "0";
+const appTarget = process.argv.includes("--android") ? "android" : "web";
 
 const solanaPath = [
   `${process.env.HOME}/.local/share/solana/install/active_release/bin`,
@@ -23,6 +24,7 @@ const solanaPath = [
 
 const env = {
   ...process.env,
+  NO_DNA: process.env.NO_DNA ?? "1",
   PATH: solanaPath,
 };
 
@@ -30,17 +32,21 @@ const children = new Set();
 let deployRunning = false;
 let deployQueued = false;
 let shuttingDown = false;
-let validatorProcess;
-let webProcess;
 
 if (process.argv.includes("--help")) {
-  console.log(`Usage: pnpm dev:local
+  console.log(`Usage:
+  pnpm dev:local
+  pnpm dev:local:android
 
 Starts the local Solana validator, funds the CLI wallet, builds and deploys the
-Anchor program, launches the web app, and redeploys when Anchor files change.
+Anchor program, launches the selected app, and redeploys when Anchor files
+change.
 
 Environment:
   LOCALNET_RESET=0   Reuse the existing local ledger instead of starting with --reset.
+
+Options:
+  --android          Launch the native Android app instead of the web app.
 `);
   process.exit(0);
 }
@@ -180,11 +186,16 @@ function watchAnchorFiles() {
 function startValidator() {
   const args = ["--ledger", ledgerDir];
   if (resetLedger) args.unshift("--reset");
-  validatorProcess = spawnChild("validator", "solana-test-validator", args);
+  spawnChild("validator", "solana-test-validator", args);
 }
 
-function startWeb() {
-  webProcess = spawnChild("web", "pnpm", ["--filter", "web", "dev"]);
+function startApp() {
+  if (appTarget === "android") {
+    spawnChild("android", "pnpm", ["--filter", "native", "android"]);
+    return;
+  }
+
+  spawnChild("web", "pnpm", ["--filter", "web", "dev"]);
 }
 
 function shutdown(exitCode = 0) {
@@ -214,7 +225,7 @@ try {
   await waitForValidator();
   fundCliWallet();
   buildGenerateDeploy("startup");
-  startWeb();
+  startApp();
   watchAnchorFiles();
 } catch (error) {
   console.error(`[localnet] ${error.message}`);
