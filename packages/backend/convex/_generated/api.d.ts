@@ -8,7 +8,16 @@
  * @module
  */
 
+import type * as agronomicPlans from "../agronomicPlans.js";
+import type * as audit from "../audit.js";
+import type * as farmerProfiles from "../farmerProfiles.js";
+import type * as lotMedia from "../lotMedia.js";
+import type * as lots from "../lots.js";
+import type * as partnerProfiles from "../partnerProfiles.js";
+import type * as partnerships from "../partnerships.js";
+import type * as sensorSnapshots from "../sensorSnapshots.js";
 import type * as status from "../status.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +26,16 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agronomicPlans: typeof agronomicPlans;
+  audit: typeof audit;
+  farmerProfiles: typeof farmerProfiles;
+  lotMedia: typeof lotMedia;
+  lots: typeof lots;
+  partnerProfiles: typeof partnerProfiles;
+  partnerships: typeof partnerships;
+  sensorSnapshots: typeof sensorSnapshots;
   status: typeof status;
+  users: typeof users;
 }>;
 
 /**

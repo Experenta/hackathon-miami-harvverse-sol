@@ -123,7 +123,7 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
     - Run `pnpm typecheck` to verify no type errors
     - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 5. Convex Backend Setup and Schema
+- [x]   5. Convex Backend Setup and Schema
     - [x] 5.1 Initialize Convex in the workspace
         - Convex is already initialized at `packages/backend/` as the `@havverse/backend` workspace package
         - The `ConvexClientProvider` is already wired in `apps/native/components/convex/convex-client-provider.tsx`
@@ -135,18 +135,18 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Import the API in the native app via: `import { api } from "@havverse/backend/convex/_generated/api"`
         - _Requirements: 9.1_
 
-    - [ ] 5.2 Define the Convex schema (9 tables)
+    - [x] 5.2 Define the Convex schema (9 tables)
         - Create `packages/backend/convex/schema.ts` with all 9 tables: users, farmerProfiles, partnerProfiles, lots, lotMedia, agronomicPlans, sensorSnapshots, partnerships, auditEvents
         - Define all fields, validators, and indexes exactly as specified in the design document
         - Always read `packages/backend/convex/_generated/ai/guidelines.md` before writing schema code
         - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.13, 9.14_
 
-    - [ ] 5.3 Implement users queries and mutations
+    - [x] 5.3 Implement users queries and mutations
         - Create `packages/backend/convex/users.ts` with: `getByWallet` query, `upsertAfterWalletConnect` mutation (idempotent by wallet), `recordRoleRegistration` mutation
         - `upsertAfterWalletConnect` creates a new user record if none exists for the wallet, otherwise updates `updatedAt`
         - _Requirements: 9.8, 9.9, 9.15_
 
-    - [ ] 5.4 Implement lots queries and mutations
+    - [x] 5.4 Implement lots queries and mutations
         - Create `packages/backend/convex/lots.ts` with: `listPublished` query, `getByCode` query, `listByFarmer` query, `createDraft` mutation, `applyDemoAutofill` mutation, `recordOnChainLot` mutation, `markPublished` mutation
         - `createDraft` sets status to "draft" with all lot fields
         - `applyDemoAutofill` applies Zafiro demo data to an existing draft lot
@@ -154,13 +154,13 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - `markPublished` updates status to "published" with the publish tx signature
         - _Requirements: 9.10, 9.11, 9.16, 9.17, 9.18, 9.19, 9.20_
 
-    - [ ] 5.5 Implement partnerships queries and mutations
+    - [x] 5.5 Implement partnerships queries and mutations
         - Create `packages/backend/convex/partnerships.ts` with: `listByPartner` query, `createPendingReservation` mutation, `recordReservationTx` mutation
         - `createPendingReservation` creates a partnership record with status "reserved"
         - `recordReservationTx` stores the partnership PDA and reservation tx signature
         - _Requirements: 9.12, 9.21, 9.22_
 
-    - [ ] 5.6 Implement profile, media, sensor, plan, and audit functions
+    - [x] 5.6 Implement profile, media, sensor, plan, and audit functions
         - Create `packages/backend/convex/farmerProfiles.ts` with: `getByWallet` query, `upsert` mutation
         - Create `packages/backend/convex/partnerProfiles.ts` with: `getByWallet` query, `upsert` mutation
         - Create `packages/backend/convex/lotMedia.ts` with: `listByLot` query, `addMedia` mutation
@@ -177,42 +177,43 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Use `convex-test` with `vitest` and `@edge-runtime/vm` inside `packages/backend/convex/`
         - _Requirements: 9.9, 9.10, 9.11, 9.18_
 
-- [ ]   6. Checkpoint — Convex schema deploys and functions type-check
+- [x]   6. Checkpoint — Convex schema deploys and functions type-check
     - Run `pnpm convex:setup` from repo root (or `pnpm setup` inside `packages/backend/`) to validate schema and function compilation
     - Run `pnpm typecheck` to verify no type errors in the workspace
     - Ensure all tests pass, ask the user if questions arise.
 
-- [ ]   7. Mobile App — Routing, Providers, and Wallet Connection
-    - [ ] 7.1 Update provider hierarchy with Convex and Role context
+- [x]   7. Mobile App — Routing, Providers, and Wallet Connection
+    - [x] 7.1 Update provider hierarchy with Convex and Role context
         - `convex` is already installed in `apps/native` and `ConvexClientProvider` is already wired in `apps/native/components/convex/convex-client-provider.tsx`
         - Ensure `apps/native/.env.local` has `EXPO_PUBLIC_CONVEX_URL` set to the Convex deployment URL
+        - Make sure to use the guidance on the skills .kiro/skills/solana-dev/convex .kiro/skills/solana-dev/convex-create-component .kiro/skills/solana-dev/convex-migration-helper .kiro/skills/solana-dev/convex-performance-audit .kiro/skills/solana-dev/convex-quickstart .kiro/skills/solana-dev/convex-setup-auth
         - Create `apps/native/features/role/role-context.tsx` with RoleProvider that exposes role state, isLoading, error, refetch
         - Update provider nesting order in `apps/native/components/app-providers.tsx`: QueryClient > Convex > Network > MWA > Role > Stack
         - Update `apps/native/constants/app-config.ts` with Convex URL reference if needed
         - Import Convex API via `import { api } from "@havverse/backend/convex/_generated/api"`
         - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 12.1_
 
-    - [ ] 7.2 Implement wallet connection screen and MWA hook
+    - [x] 7.2 Implement wallet connection screen and MWA hook
         - Create `apps/native/features/wallet/use-wallet-connection.ts` hook wrapping MWA authorize/deauthorize
         - Create `apps/native/app/connect-wallet.tsx` screen with MWA connect button
         - On successful connection, call `users.upsertAfterWalletConnect` Convex mutation via `import { api } from "@havverse/backend/convex/_generated/api"`
         - _Requirements: 5.1, 6.5_
 
-    - [ ] 7.3 Implement role fetching and routing logic
+    - [x] 7.3 Implement role fetching and routing logic
         - Create `apps/native/features/role/use-role.ts` hook that calls `fetchUserRole` from `@repo/solana-client` on wallet connect
         - Create `apps/native/components/loading-screen.tsx` for loading state during role fetch
         - Update `apps/native/app/index.tsx` to act as a router: redirect to `connect-wallet` if no wallet, show loading while fetching role, redirect to `role-select` if no role PDA, redirect to `(farmer)/home` or `(partner)/home` based on role
         - Display error with retry if RPC call fails (no Convex fallback)
         - _Requirements: 5.2, 5.3, 5.4, 5.5, 5.6, 5.7_
 
-    - [ ] 7.4 Implement role selection and registration screen
+    - [x] 7.4 Implement role selection and registration screen
         - Create `apps/native/app/role-select.tsx` with Farmer and Partner options with descriptions
         - Create `apps/native/hooks/use-transaction.ts` hook for MWA sign+send flow with pending/error states
         - On role selection: build `registerRole` transaction using `buildRegisterRoleTx`, sign via MWA, show pending state with signature, on confirm call `users.recordRoleRegistration` Convex mutation, refetch role and route to dashboard
         - Handle transaction failure with error display and retry
         - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 6.6_
 
-    - [ ] 7.5 Set up expo-router route groups and role guard
+    - [x] 7.5 Set up expo-router route groups and role guard
         - Create `apps/native/app/(farmer)/_layout.tsx` with Farmer tab/stack layout
         - Create `apps/native/app/(partner)/_layout.tsx` with Partner tab/stack layout
         - Create `apps/native/components/role-guard.tsx` that checks role context and redirects if wrong role
@@ -227,7 +228,7 @@ This plan implements the Harvverse Solana Mobile App in five phases following th
         - Test that RPC failure shows error with retry
         - _Requirements: 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ]   8. Checkpoint — App launches, connects wallet, and routes by role
+- [x]   8. Checkpoint — App launches, connects wallet, and routes by role
     - Run `pnpm typecheck` to verify no type errors
     - Ensure all tests pass, ask the user if questions arise.
 
