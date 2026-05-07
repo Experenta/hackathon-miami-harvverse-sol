@@ -31,7 +31,7 @@ const getLotContext: any = createTool({
 
 const harvverseAgent: any = new AgentClass(components.agent, {
 	name: "Harvverse Assistant",
-	languageModel: anthropic("claude-3-5-sonnet-20241022"),
+	languageModel: anthropic("claude-sonnet-4-5-20250929"),
 	instructions: `You are the Harvverse AI Assistant, an expert in coffee lot management on the Solana blockchain.
 
 You help farmers and partners understand their lots, partnerships, and agronomic data.

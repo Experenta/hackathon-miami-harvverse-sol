@@ -1678,7 +1678,7 @@ export function PublishReviewScreen() {
         const lotData: LotPublishData = {
           lotCode: lot.lotCode,
           farmName: lot.farmName,
-          farmerWallet: walletAddress,
+          farmerWallet: walletAddress, // Keep as string for initial computation
           country: lot.country,
           region: lot.region,
           latitude: lot.latitude,
@@ -1752,6 +1752,7 @@ export function PublishReviewScreen() {
         lotPda: hashes.lotPda.toString(),
         tx: result.signature,
       });
+
       await markPublished({
         lotCode: lot.lotCode,
         tx: result.signature,
@@ -1938,6 +1939,7 @@ export function PartnerHomeScreen() {
   const router = useRouter();
   const { rolePda } = useRole();
   const { partnerships, isLoading } = usePartnerships();
+  const walletAddress = wallet?.account.address?.toString() ?? "";
 
   return (
     <RequireRole requiredRole="partner">
@@ -2033,6 +2035,15 @@ export function PartnerHomeScreen() {
               </div>
             )}
           </section>
+
+          {/* AI Chat Panel for Partners */}
+          {walletAddress && (
+            <AiChatPanel
+              lotCode="" // Empty for general partner queries
+              wallet={walletAddress}
+              role="partner"
+            />
+          )}
         </div>
       </AppShell>
     </RequireRole>
@@ -2041,47 +2052,60 @@ export function PartnerHomeScreen() {
 
 export function CatalogScreen() {
   const { lots, isLoading } = useLotCatalog();
+  const { wallet } = useWallet();
+  const walletAddress = wallet?.account.address?.toString() ?? "";
 
   return (
     <RequireRole requiredRole="partner">
       <AppShell role="partner" title="Lot Catalog">
-        <p className="mb-4 text-sm text-muted">
-          Browse published lots available for partnership.
-        </p>
-        {isLoading ? (
-          <Card>
-            <p className="text-sm text-muted">Loading lots...</p>
-          </Card>
-        ) : lots.length === 0 ? (
-          <Card>
-            <p className="text-sm text-muted">
-              No published lots available yet.
-            </p>
-          </Card>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {lots.map((lot) => (
-              <Link
-                key={lot._id}
-                href={`/partner/lots/${encodeURIComponent(lot.lotCode)}`}
-                className="rounded-lg border border-border bg-card p-4 shadow-sm transition hover:border-violet-300"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-mono text-sm font-bold">{lot.lotCode}</p>
-                    <h2 className="mt-1 font-semibold">{lot.farmName}</h2>
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Browse published lots available for partnership.
+          </p>
+          {isLoading ? (
+            <Card>
+              <p className="text-sm text-muted">Loading lots...</p>
+            </Card>
+          ) : lots.length === 0 ? (
+            <Card>
+              <p className="text-sm text-muted">
+                No published lots available yet.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {lots.map((lot) => (
+                <Link
+                  key={lot._id}
+                  href={`/partner/lots/${encodeURIComponent(lot.lotCode)}`}
+                  className="rounded-lg border border-border bg-card p-4 shadow-sm transition hover:border-violet-300"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-sm font-bold">{lot.lotCode}</p>
+                      <h2 className="mt-1 font-semibold">{lot.farmName}</h2>
+                    </div>
+                    <p className="text-sm font-bold text-violet-700">
+                      {formatUsdCents(lot.ticketUsdcCents)}
+                    </p>
                   </div>
-                  <p className="text-sm font-bold text-violet-700">
-                    {formatUsdCents(lot.ticketUsdcCents)}
+                  <p className="mt-2 text-sm text-muted">
+                    {lot.variety} - {lot.region}, {lot.country}
                   </p>
-                </div>
-                <p className="mt-2 text-sm text-muted">
-                  {lot.variety} - {lot.region}, {lot.country}
-                </p>
-              </Link>
-            ))}
-          </div>
-        )}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* AI Chat Panel for Partners browsing lots */}
+          {walletAddress && (
+            <AiChatPanel
+              lotCode="" // Empty for general catalog queries
+              wallet={walletAddress}
+              role="partner"
+            />
+          )}
+        </div>
       </AppShell>
     </RequireRole>
   );
@@ -2092,12 +2116,14 @@ export function PartnerLotDetailScreen() {
   const client = useSolanaClient();
   const { cluster } = useCluster();
   const router = useRouter();
+  const { wallet } = useWallet();
   const lot = useQuery(api.lots.getByCode, lotCode ? { lotCode } : "skip");
   const [verificationStatus, setVerificationStatus] =
     useState<VerificationStatus>("loading");
   const [verificationError, setVerificationError] = useState<string | null>(
     null,
   );
+  const walletAddress = wallet?.account.address?.toString() ?? "";
 
   useEffect(() => {
     if (!lot?.lotPda) {
@@ -2152,70 +2178,81 @@ export function PartnerLotDetailScreen() {
   return (
     <RequireRole requiredRole="partner">
       <AppShell role="partner" title={lot.farmName}>
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-4">
-            <Card>
-              <h2 className="mb-2 font-bold">{lot.lotCode}</h2>
-              <DetailRow label="Variety" value={lot.variety} />
-              <DetailRow
-                label="Location"
-                value={`${lot.region}, ${lot.country}`}
+        <div className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+            <div className="space-y-4">
+              <Card>
+                <h2 className="mb-2 font-bold">{lot.lotCode}</h2>
+                <DetailRow label="Variety" value={lot.variety} />
+                <DetailRow
+                  label="Location"
+                  value={`${lot.region}, ${lot.country}`}
+                />
+                <DetailRow
+                  label="Coordinates"
+                  value={`${lot.latitude}, ${lot.longitude}`}
+                />
+                <DetailRow label="Altitude" value={`${lot.altitudeMeters}m`} />
+                <DetailRow label="Area" value={`${lot.areaManzanas} manzanas`} />
+                <DetailRow
+                  label="Ticket"
+                  value={formatUsdCents(lot.ticketUsdcCents)}
+                />
+                <DetailRow
+                  label="Farmer Share"
+                  value={formatBps(lot.farmerShareBps)}
+                />
+                <DetailRow
+                  label="Partner Share"
+                  value={formatBps(lot.partnerShareBps)}
+                />
+              </Card>
+              <Card>
+                <h2 className="mb-2 font-bold">On-Chain Data</h2>
+                {lot.lotPda && (
+                  <DetailRow label="Lot PDA" value={ellipsify(lot.lotPda)} mono />
+                )}
+                <DetailRow
+                  label="Farmer Wallet"
+                  value={ellipsify(lot.farmerWallet)}
+                  mono
+                />
+              </Card>
+            </div>
+            <div className="space-y-4">
+              <VerificationBadge
+                status={verificationStatus}
+                error={verificationError}
               />
-              <DetailRow
-                label="Coordinates"
-                value={`${lot.latitude}, ${lot.longitude}`}
-              />
-              <DetailRow label="Altitude" value={`${lot.altitudeMeters}m`} />
-              <DetailRow label="Area" value={`${lot.areaManzanas} manzanas`} />
-              <DetailRow
-                label="Ticket"
-                value={formatUsdCents(lot.ticketUsdcCents)}
-              />
-              <DetailRow
-                label="Farmer Share"
-                value={formatBps(lot.farmerShareBps)}
-              />
-              <DetailRow
-                label="Partner Share"
-                value={formatBps(lot.partnerShareBps)}
-              />
-            </Card>
-            <Card>
-              <h2 className="mb-2 font-bold">On-Chain Data</h2>
-              {lot.lotPda && (
-                <DetailRow label="Lot PDA" value={ellipsify(lot.lotPda)} mono />
-              )}
-              <DetailRow
-                label="Farmer Wallet"
-                value={ellipsify(lot.farmerWallet)}
-                mono
-              />
-            </Card>
+              <Button
+                variant="purple"
+                disabled={verificationStatus !== "match"}
+                onClick={() =>
+                  router.push(
+                    `/partner/lots/${encodeURIComponent(lotCode)}/reserve`,
+                  )
+                }
+                className="w-full"
+              >
+                Reserve Partnership
+              </Button>
+              {verificationStatus !== "match" &&
+                verificationStatus !== "loading" && (
+                  <p className="text-center text-xs text-muted">
+                    On-chain verification must pass before reserving.
+                  </p>
+                )}
+            </div>
           </div>
-          <div className="space-y-4">
-            <VerificationBadge
-              status={verificationStatus}
-              error={verificationError}
+
+          {/* AI Chat Panel for Partner lot details */}
+          {walletAddress && lotCode && (
+            <AiChatPanel
+              lotCode={lotCode}
+              wallet={walletAddress}
+              role="partner"
             />
-            <Button
-              variant="purple"
-              disabled={verificationStatus !== "match"}
-              onClick={() =>
-                router.push(
-                  `/partner/lots/${encodeURIComponent(lotCode)}/reserve`,
-                )
-              }
-              className="w-full"
-            >
-              Reserve Partnership
-            </Button>
-            {verificationStatus !== "match" &&
-              verificationStatus !== "loading" && (
-                <p className="text-center text-xs text-muted">
-                  On-chain verification must pass before reserving.
-                </p>
-              )}
-          </div>
+          )}
         </div>
       </AppShell>
     </RequireRole>
