@@ -69,11 +69,15 @@ A real farm. A real plan. A real Solana program. A real demo, in your hand.
 
 > **Short demo (≤ 90 s):** the full faucet → fund → record proof → release flow.
 
-<!-- TODO: replace with embedded YouTube / Twitter / Vimeo link or short MP4 -->
+<p align="center">
+  <a href="https://youtu.be/7dxmFQjrGzM">
+    <img src="https://img.youtube.com/vi/7dxmFQjrGzM/maxresdefault.jpg" alt="Harvverse — 90s demo video" width="640" />
+  </a>
+</p>
 
-```
-[ insert demo video here ]
-```
+<p align="center">
+  ▶ <a href="https://youtu.be/7dxmFQjrGzM"><strong>Watch the 90-second demo on YouTube</strong></a>
+</p>
 
 > **Loom walkthrough (with audio):** repo tour, Anchor program walkthrough, and
 > live demo on devnet.
@@ -89,17 +93,12 @@ A real farm. A real plan. A real Solana program. A real demo, in your hand.
 <!-- TODO: replace with Canva share link -->
 
 ```
-[ insert Canva slides link here ]
+
 ```
 
 ---
 
 ## 🖼️ Screens
-
-> All screens live in [`apps/native/app`](apps/native/app). Drop screenshots
-> into [`docs/screenshots/`](docs/screenshots/) using the file names below and
-> they will appear automatically.
-
 ### 1. Onboarding · Connect Wallet & Pick Role
 
 |                                    Connect Wallet                                    |                                         Role Select                                         |
