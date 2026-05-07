@@ -9,5 +9,6 @@ export * from "./constants";
 export * from "./pda";
 export * from "./fetchers";
 export * from "./transactions";
+export * from "./mock-usdc";
 export * from "./hash";
 export * from "./types";

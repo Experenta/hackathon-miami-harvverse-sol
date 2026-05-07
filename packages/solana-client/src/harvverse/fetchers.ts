@@ -12,19 +12,26 @@ import {
   fetchMaybePartnership,
   fetchMaybeFarmerProfile,
   fetchMaybePartnerProfile,
+  fetchMaybePaymentConfig,
+  fetchMaybePartnershipEscrow,
   type UserRole,
   type Lot,
   type Partnership,
   type FarmerProfile,
   type PartnerProfile,
+  type PaymentConfig,
+  type PartnershipEscrow,
 } from "../generated/harvverse";
 import {
   findUserRolePda,
   findFarmerProfilePda,
   findPartnerProfilePda,
   findPartnershipPda,
+  findPaymentConfigPda,
+  findPartnershipEscrowPda,
   deriveLotPda,
 } from "./pda";
+import type { MockUsdcBalance } from "./types";
 
 type Rpc = Parameters<typeof fetchMaybeUserRole>[0];
 
@@ -115,4 +122,85 @@ export async function fetchPartnerProfileByWallet(
   const [pda] = await findPartnerProfilePda({ partner });
   const account = await fetchMaybePartnerProfile(rpc, pda);
   return account.exists ? account : null;
+}
+
+/**
+ * Fetches the PaymentConfig singleton.
+ * Returns null if the account does not exist.
+ */
+export async function fetchHarvversePaymentConfig(
+  rpc: Rpc,
+): Promise<MaybeAccount<PaymentConfig> | null> {
+  const [pda] = await findPaymentConfigPda();
+  const account = await fetchMaybePaymentConfig(rpc, pda);
+  return account.exists ? account : null;
+}
+
+/**
+ * Fetches a PartnershipEscrow account by partnership PDA.
+ * Returns null if the escrow account does not exist.
+ */
+export async function fetchPartnershipEscrowByPartnership(
+  rpc: Rpc,
+  partnershipPda: Address,
+): Promise<MaybeAccount<PartnershipEscrow> | null> {
+  const [pda] = await findPartnershipEscrowPda({ partnership: partnershipPda });
+  const account = await fetchMaybePartnershipEscrow(rpc, pda);
+  return account.exists ? account : null;
+}
+
+type TokenBalanceRpcResponse = {
+  value: {
+    amount: string;
+    decimals: number;
+    uiAmount: number | null;
+    uiAmountString?: string;
+  };
+};
+
+type TokenBalanceRpc = {
+  getTokenAccountBalance(address: Address): {
+    send(): Promise<TokenBalanceRpcResponse>;
+  };
+};
+
+/**
+ * Reads a live SPL token account balance from RPC.
+ * Missing token accounts return a zero balance with `exists: false`.
+ */
+export async function fetchMockUsdcTokenAccountBalance(
+  rpc: Rpc,
+  tokenAccount: Address,
+  mint: Address,
+): Promise<MockUsdcBalance> {
+  const account = await rpc
+    .getAccountInfo(tokenAccount, { encoding: "base64" })
+    .send();
+
+  if (!account.value) {
+    return {
+      tokenAccount,
+      mint,
+      amountBaseUnits: 0n,
+      decimals: 6,
+      uiAmount: 0,
+      uiAmountString: "0",
+      exists: false,
+    };
+  }
+
+  const balance = await (rpc as unknown as TokenBalanceRpc)
+    .getTokenAccountBalance(tokenAccount)
+    .send();
+
+  return {
+    tokenAccount,
+    mint,
+    amountBaseUnits: BigInt(balance.value.amount),
+    decimals: balance.value.decimals,
+    uiAmount: balance.value.uiAmount ?? 0,
+    uiAmountString:
+      balance.value.uiAmountString ?? String(balance.value.uiAmount ?? 0),
+    exists: true,
+  };
 }

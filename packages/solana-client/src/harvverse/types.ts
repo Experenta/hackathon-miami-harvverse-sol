@@ -13,6 +13,8 @@ export type {
   FarmerProfile,
   PartnerProfile,
   ProgramConfig,
+  PaymentConfig,
+  PartnershipEscrow,
   SettlementReceipt,
   MilestoneReceipt,
 } from "../generated/harvverse";
@@ -72,6 +74,48 @@ export interface ReservePartnershipTxInput {
   partner: TransactionSigner;
   lotPda: Address;
   termsHash: Uint8Array;
+  ticketUsdcCents?: number | bigint;
+  releaseAmounts?: Array<number | bigint>;
+  mockUsdcMint?: Address;
+}
+
+export interface ClaimMockUsdcTxInput {
+  claimant: TransactionSigner;
+  mockUsdcMint: Address;
+}
+
+export interface InitializeMockUsdcTxInput {
+  authority: TransactionSigner;
+  decimals: number;
+  faucetAmount: number | bigint;
+}
+
+export interface RecordMilestoneTxInput {
+  recorder: TransactionSigner;
+  partnershipPda: Address;
+  milestoneIndex: number;
+  proofHash: Uint8Array;
+}
+
+export interface ReleaseKickoffFundsTxInput {
+  signer: TransactionSigner;
+  partnershipPda: Address;
+  lotPda: Address;
+  farmer: Address;
+  vaultTokenAccount: Address;
+  farmerMockUsdcAta: Address;
+  mockUsdcMint: Address;
+}
+
+export interface ReleaseMilestoneFundsTxInput {
+  signer: TransactionSigner;
+  partnershipPda: Address;
+  farmer: Address;
+  requiredMilestoneReceipt: Address;
+  vaultTokenAccount: Address;
+  farmerMockUsdcAta: Address;
+  mockUsdcMint: Address;
+  releaseIndex: number;
 }
 
 export interface RecordSettlementTxInput {
@@ -138,4 +182,14 @@ export interface TermsManifest {
   metadataHash: string;
   planHash: string;
   timestamp: number;
+}
+
+export interface MockUsdcBalance {
+  tokenAccount: Address;
+  mint: Address;
+  amountBaseUnits: bigint;
+  decimals: number;
+  uiAmount: number;
+  uiAmountString: string;
+  exists: boolean;
 }

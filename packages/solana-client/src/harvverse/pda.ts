@@ -15,7 +15,11 @@ import {
   type Address,
   type ProgramDerivedAddress,
 } from "@solana/kit";
-import { HARVVERSE_PROGRAM_ID } from "./constants";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  HARVVERSE_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "./constants";
 
 /**
  * Derives the Lot PDA for a given farmer wallet and lot ID hash.
@@ -57,6 +61,24 @@ export async function deriveMilestonePda(
   });
 }
 
+/**
+ * Derives the associated token account for an owner + mint pair.
+ * Seeds: [owner, token_program, mint]
+ */
+export async function deriveAssociatedTokenAccount(
+  owner: Address,
+  mint: Address,
+): Promise<ProgramDerivedAddress> {
+  return getProgramDerivedAddress({
+    programAddress: ASSOCIATED_TOKEN_PROGRAM_ID,
+    seeds: [
+      getAddressEncoder().encode(owner),
+      getAddressEncoder().encode(TOKEN_PROGRAM_ID),
+      getAddressEncoder().encode(mint),
+    ],
+  });
+}
+
 // Re-export the Codama-generated PDA finders for convenience
 export {
   findUserRolePda,
@@ -65,4 +87,9 @@ export {
   findPartnershipPda,
   findSettlementReceiptPda,
   findProgramConfigPda,
+  findPaymentConfigPda,
+  findMockUsdcMintPda,
+  findMockUsdcMintAuthorityPda,
+  findPartnershipEscrowPda,
+  findVaultAuthorityPda,
 } from "../generated/harvverse";

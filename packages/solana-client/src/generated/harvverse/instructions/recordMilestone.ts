@@ -32,6 +32,7 @@ import {
   type WritableAccount,
   type WritableSignerAccount,
 } from "@solana/kit";
+import { findProgramConfigPda } from "../pdas";
 import { HARVVERSE_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
@@ -48,6 +49,7 @@ export function getRecordMilestoneDiscriminatorBytes() {
 export type RecordMilestoneInstruction<
   TProgram extends string = typeof HARVVERSE_PROGRAM_ADDRESS,
   TAccountRecorder extends string | AccountMeta<string> = string,
+  TAccountProgramConfig extends string | AccountMeta<string> = string,
   TAccountPartnership extends string | AccountMeta<string> = string,
   TAccountMilestoneReceipt extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
@@ -61,6 +63,9 @@ export type RecordMilestoneInstruction<
         ? WritableSignerAccount<TAccountRecorder> &
             AccountSignerMeta<TAccountRecorder>
         : TAccountRecorder,
+      TAccountProgramConfig extends string
+        ? ReadonlyAccount<TAccountProgramConfig>
+        : TAccountProgramConfig,
       TAccountPartnership extends string
         ? ReadonlyAccount<TAccountPartnership>
         : TAccountPartnership,
@@ -114,13 +119,111 @@ export function getRecordMilestoneInstructionDataCodec(): FixedSizeCodec<
   );
 }
 
-export type RecordMilestoneInput<
+export type RecordMilestoneAsyncInput<
   TAccountRecorder extends string = string,
+  TAccountProgramConfig extends string = string,
   TAccountPartnership extends string = string,
   TAccountMilestoneReceipt extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   recorder: TransactionSigner<TAccountRecorder>;
+  programConfig?: Address<TAccountProgramConfig>;
+  partnership: Address<TAccountPartnership>;
+  milestoneReceipt: Address<TAccountMilestoneReceipt>;
+  systemProgram?: Address<TAccountSystemProgram>;
+  milestoneIndex: RecordMilestoneInstructionDataArgs["milestoneIndex"];
+  proofHash: RecordMilestoneInstructionDataArgs["proofHash"];
+};
+
+export async function getRecordMilestoneInstructionAsync<
+  TAccountRecorder extends string,
+  TAccountProgramConfig extends string,
+  TAccountPartnership extends string,
+  TAccountMilestoneReceipt extends string,
+  TAccountSystemProgram extends string,
+  TProgramAddress extends Address = typeof HARVVERSE_PROGRAM_ADDRESS,
+>(
+  input: RecordMilestoneAsyncInput<
+    TAccountRecorder,
+    TAccountProgramConfig,
+    TAccountPartnership,
+    TAccountMilestoneReceipt,
+    TAccountSystemProgram
+  >,
+  config?: { programAddress?: TProgramAddress },
+): Promise<
+  RecordMilestoneInstruction<
+    TProgramAddress,
+    TAccountRecorder,
+    TAccountProgramConfig,
+    TAccountPartnership,
+    TAccountMilestoneReceipt,
+    TAccountSystemProgram
+  >
+> {
+  // Program address.
+  const programAddress = config?.programAddress ?? HARVVERSE_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    recorder: { value: input.recorder ?? null, isWritable: true },
+    programConfig: { value: input.programConfig ?? null, isWritable: false },
+    partnership: { value: input.partnership ?? null, isWritable: false },
+    milestoneReceipt: {
+      value: input.milestoneReceipt ?? null,
+      isWritable: true,
+    },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.programConfig.value) {
+    accounts.programConfig.value = await findProgramConfigPda();
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta(accounts.recorder),
+      getAccountMeta(accounts.programConfig),
+      getAccountMeta(accounts.partnership),
+      getAccountMeta(accounts.milestoneReceipt),
+      getAccountMeta(accounts.systemProgram),
+    ],
+    data: getRecordMilestoneInstructionDataEncoder().encode(
+      args as RecordMilestoneInstructionDataArgs,
+    ),
+    programAddress,
+  } as RecordMilestoneInstruction<
+    TProgramAddress,
+    TAccountRecorder,
+    TAccountProgramConfig,
+    TAccountPartnership,
+    TAccountMilestoneReceipt,
+    TAccountSystemProgram
+  >);
+}
+
+export type RecordMilestoneInput<
+  TAccountRecorder extends string = string,
+  TAccountProgramConfig extends string = string,
+  TAccountPartnership extends string = string,
+  TAccountMilestoneReceipt extends string = string,
+  TAccountSystemProgram extends string = string,
+> = {
+  recorder: TransactionSigner<TAccountRecorder>;
+  programConfig: Address<TAccountProgramConfig>;
   partnership: Address<TAccountPartnership>;
   milestoneReceipt: Address<TAccountMilestoneReceipt>;
   systemProgram?: Address<TAccountSystemProgram>;
@@ -130,6 +233,7 @@ export type RecordMilestoneInput<
 
 export function getRecordMilestoneInstruction<
   TAccountRecorder extends string,
+  TAccountProgramConfig extends string,
   TAccountPartnership extends string,
   TAccountMilestoneReceipt extends string,
   TAccountSystemProgram extends string,
@@ -137,6 +241,7 @@ export function getRecordMilestoneInstruction<
 >(
   input: RecordMilestoneInput<
     TAccountRecorder,
+    TAccountProgramConfig,
     TAccountPartnership,
     TAccountMilestoneReceipt,
     TAccountSystemProgram
@@ -145,6 +250,7 @@ export function getRecordMilestoneInstruction<
 ): RecordMilestoneInstruction<
   TProgramAddress,
   TAccountRecorder,
+  TAccountProgramConfig,
   TAccountPartnership,
   TAccountMilestoneReceipt,
   TAccountSystemProgram
@@ -155,6 +261,7 @@ export function getRecordMilestoneInstruction<
   // Original accounts.
   const originalAccounts = {
     recorder: { value: input.recorder ?? null, isWritable: true },
+    programConfig: { value: input.programConfig ?? null, isWritable: false },
     partnership: { value: input.partnership ?? null, isWritable: false },
     milestoneReceipt: {
       value: input.milestoneReceipt ?? null,
@@ -180,6 +287,7 @@ export function getRecordMilestoneInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.recorder),
+      getAccountMeta(accounts.programConfig),
       getAccountMeta(accounts.partnership),
       getAccountMeta(accounts.milestoneReceipt),
       getAccountMeta(accounts.systemProgram),
@@ -191,6 +299,7 @@ export function getRecordMilestoneInstruction<
   } as RecordMilestoneInstruction<
     TProgramAddress,
     TAccountRecorder,
+    TAccountProgramConfig,
     TAccountPartnership,
     TAccountMilestoneReceipt,
     TAccountSystemProgram
@@ -204,9 +313,10 @@ export type ParsedRecordMilestoneInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     recorder: TAccountMetas[0];
-    partnership: TAccountMetas[1];
-    milestoneReceipt: TAccountMetas[2];
-    systemProgram: TAccountMetas[3];
+    programConfig: TAccountMetas[1];
+    partnership: TAccountMetas[2];
+    milestoneReceipt: TAccountMetas[3];
+    systemProgram: TAccountMetas[4];
   };
   data: RecordMilestoneInstructionData;
 };
@@ -219,7 +329,7 @@ export function parseRecordMilestoneInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedRecordMilestoneInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 5) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -233,6 +343,7 @@ export function parseRecordMilestoneInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       recorder: getNextAccount(),
+      programConfig: getNextAccount(),
       partnership: getNextAccount(),
       milestoneReceipt: getNextAccount(),
       systemProgram: getNextAccount(),

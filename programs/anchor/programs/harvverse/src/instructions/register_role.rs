@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
-use crate::state::*;
 use crate::events::*;
+use crate::state::*;
 use crate::RoleKind;
 
 #[derive(Accounts)]

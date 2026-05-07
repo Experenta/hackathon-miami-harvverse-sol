@@ -11,12 +11,11 @@ import {
 	Banner,
 	Button,
 	Card,
+	CollapsibleSection,
 	DetailRow,
-	ListItemCard,
 	MetricCard,
 	Screen,
 	ScreenHeader,
-	Section,
 	StatusPill,
 } from "@/components/ui";
 import { usePartnerships } from "@/features/partner/use-partnership";
@@ -54,137 +53,82 @@ export default function PartnershipDetailScreen() {
 	const statusLabel = formatStatusLabel(partnership.status);
 
 	return (
-		<Screen scrollable contentContainerStyle={{ gap: theme.spacing.xl }}>
-			{/* Hero */}
+		<Screen scrollable contentContainerStyle={{ gap: theme.spacing.lg }}>
+			{/* Header */}
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
 					showBack
-					eyebrow="Active position"
-					title={`Yield agreement ${partnership.lotCode}`}
-					subtitle="This position represents your active partnership with commercial and on-chain references."
-					trailing={<Badge label="Partner position" tone="partner" />}
+					eyebrow={partnership.lotCode}
+					title="Yield agreement"
+					trailing={<Badge label="Partner" tone="partner" />}
 				/>
 			</Animated.View>
 
-			{/* Status pills */}
+			{/* Status */}
 			<Animated.View entering={FadeIn.delay(50).duration(200)}>
 				<View
 					style={{
 						flexDirection: "row",
-						flexWrap: "wrap",
-						gap: theme.spacing.md,
+						alignItems: "center",
+						gap: theme.spacing.sm,
 					}}
 				>
 					<StatusPill label={statusLabel} tone={statusTone} />
-					<StatusPill label="Yield agreement" tone="accent" />
 					<StatusPill
 						label={
-							partnership.partnershipPda
-								? "On-chain linked"
-								: "Pending PDA"
+							partnership.partnershipPda ? "On-chain" : "Pending"
 						}
 						tone={partnership.partnershipPda ? "success" : "info"}
 					/>
 				</View>
 			</Animated.View>
 
-			{/* Position snapshot */}
+			{/* Position snapshot — 2 cards */}
 			<Animated.View entering={FadeInUp.delay(75).duration(250)}>
-				<Section
-					title="Position snapshot"
-					description="Primary position state is surfaced ahead of technical identifiers."
-				>
-					<View
-						style={{
-							flexDirection: "row",
-							flexWrap: "wrap",
-							gap: theme.spacing.md,
-						}}
-					>
-						<MetricCard
-							tone="partner"
-							eyebrow="Position"
-							label="Lot code"
-							value={partnership.lotCode}
-							helper="Underlying asset reference"
-							style={{ minWidth: 160 }}
-						/>
-						<MetricCard
-							tone={statusTone === "success" ? "success" : "info"}
-							eyebrow="Lifecycle"
-							label="Status"
-							value={statusLabel}
-							helper="Current agreement state"
-							style={{ minWidth: 160 }}
-						/>
-					</View>
-				</Section>
-			</Animated.View>
-
-			{/* Agreement identity */}
-			<Animated.View entering={FadeInUp.delay(50).duration(250)}>
-				<Section
-					title="Agreement identity"
-					description="The partnership framed as a live yield agreement."
-				>
-					<ListItemCard
-						disabled
+				<View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+					<MetricCard
 						tone="partner"
-						eyebrow={partnership.lotCode}
-						title={`Position on lot ${partnership.lotCode}`}
-						subtitle={`Counterparty ${ellipsify(partnership.farmerWallet)}`}
-						status={{ label: statusLabel, tone: statusTone }}
-						highlight={{
-							label: "Partner role",
-							value: "Active position",
-						}}
-						badges={[
-							{ label: "Yield agreement", tone: "partner" },
-							{
-								label: partnership.reserveTx
-									? "Reserved on-chain"
-									: "Awaiting tx",
-								tone: partnership.reserveTx
-									? "success"
-									: "info",
-							},
-						]}
-						details={[
-							{
-								label: "Farmer wallet",
-								value: ellipsify(partnership.farmerWallet),
-							},
-							{
-								label: "Terms hash",
-								value: partnership.termsHash
-									? ellipsify(partnership.termsHash, 8)
-									: "Pending",
-							},
-						]}
+						eyebrow="Position"
+						label="Lot"
+						value={partnership.lotCode}
+						helper="Underlying asset"
+						style={{ flex: 1 }}
 					/>
-				</Section>
+					<MetricCard
+						tone={statusTone === "success" ? "success" : "info"}
+						eyebrow="Lifecycle"
+						label="Status"
+						value={statusLabel}
+						helper="Agreement state"
+						style={{ flex: 1 }}
+					/>
+				</View>
 			</Animated.View>
 
-			{/* Agreement references */}
-			<Animated.View entering={FadeInUp.delay(250).duration(250)}>
-				<Section
-					title="Agreement references"
-					description="On-chain and transaction references."
-					aside={<Badge label="Reference data" tone="info" />}
-				>
-					<Card variant="accent">
-						<DetailRow label="Lot" value={partnership.lotCode} />
+			{/* Counterparty info — inline */}
+			<Animated.View entering={FadeInUp.delay(90).duration(250)}>
+				<Card variant="muted">
+					<DetailRow
+						label="Farmer"
+						value={ellipsify(partnership.farmerWallet)}
+						mono
+						valueTone="secondary"
+					/>
+					{partnership.termsHash ? (
 						<DetailRow
-							label="Status"
-							value={statusLabel}
-							valueTone="secondary"
-						/>
-						<DetailRow
-							label="Farmer"
-							value={ellipsify(partnership.farmerWallet)}
+							label="Terms hash"
+							value={ellipsify(partnership.termsHash, 8)}
 							mono
 							valueTone="secondary"
 						/>
+					) : null}
+				</Card>
+			</Animated.View>
+
+			{/* On-chain references — collapsed */}
+			<Animated.View entering={FadeInUp.delay(100).duration(250)}>
+				<CollapsibleSection title="On-chain references">
+					<Card variant="muted">
 						{partnership.partnershipPda ? (
 							<DetailRow
 								label="Partnership PDA"
@@ -210,7 +154,7 @@ export default function PartnershipDetailScreen() {
 							/>
 						) : null}
 					</Card>
-				</Section>
+				</CollapsibleSection>
 			</Animated.View>
 
 			{/* Action */}

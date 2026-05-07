@@ -7,10 +7,16 @@
 
 import type { Address, TransactionSendingSigner } from "@solana/kit";
 import {
+  buildCreateAssociatedTokenAccountIdempotentTx,
   computeManifestHash,
   computeManifestHashHex,
+  deriveAssociatedTokenAccount,
+  findMockUsdcMintPda,
+  findPartnershipEscrowPda,
   buildReservePartnershipTx,
   findPartnershipPda,
+  findVaultAuthorityPda,
+  ZAFIRO_RELEASE_AMOUNTS_BASE_UNITS,
   type TermsManifest,
 } from "@repo/solana-client";
 
@@ -29,6 +35,12 @@ export interface ReserveFlowResult {
   termsHash: Uint8Array;
   termsHashHex: string;
   partnershipPda: Address;
+  partnershipEscrowPda: Address;
+  vaultAuthority: Address;
+  vaultTokenAccount: Address;
+  partnerMockUsdcAta: Address;
+  mockUsdcMint: Address;
+  releaseAmounts: bigint[];
   timestamp: number;
 }
 
@@ -65,11 +77,32 @@ export async function computeReserveData(
     lot: input.lotPda as Address,
     partner: input.partnerWallet as Address,
   });
+  const [mockUsdcMint] = await findMockUsdcMintPda();
+  const [partnershipEscrowPda] = await findPartnershipEscrowPda({
+    partnership: partnershipPda,
+  });
+  const [vaultAuthority] = await findVaultAuthorityPda({
+    partnership: partnershipPda,
+  });
+  const [vaultTokenAccount] = await deriveAssociatedTokenAccount(
+    vaultAuthority,
+    mockUsdcMint,
+  );
+  const [partnerMockUsdcAta] = await deriveAssociatedTokenAccount(
+    input.partnerWallet as Address,
+    mockUsdcMint,
+  );
 
   return {
     termsHash,
     termsHashHex,
     partnershipPda,
+    partnershipEscrowPda,
+    vaultAuthority,
+    vaultTokenAccount,
+    partnerMockUsdcAta,
+    mockUsdcMint,
+    releaseAmounts: [...ZAFIRO_RELEASE_AMOUNTS_BASE_UNITS],
     timestamp,
   };
 }
@@ -81,11 +114,24 @@ export async function buildReserveInstruction(
   signer: TransactionSendingSigner,
   lotPda: Address,
   termsHash: Uint8Array,
+  ticketUsdcCents: number,
+  mockUsdcMint: Address,
+  partnerMockUsdcAta: Address,
+  releaseAmounts: Array<number | bigint>,
 ) {
+  const createAtaIx = buildCreateAssociatedTokenAccountIdempotentTx({
+    payer: signer,
+    owner: signer.address,
+    mint: mockUsdcMint,
+    tokenAccount: partnerMockUsdcAta,
+  });
   const ix = await buildReservePartnershipTx({
     partner: signer,
     lotPda,
     termsHash,
+    ticketUsdcCents,
+    mockUsdcMint,
+    releaseAmounts,
   });
-  return [ix];
+  return [createAtaIx, ix];
 }

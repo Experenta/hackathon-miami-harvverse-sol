@@ -112,6 +112,16 @@ export default defineSchema({
     partnerWallet: v.string(),
     termsHash: v.string(),
     reserveTx: v.optional(v.string()),
+    ticketUsdcCents: v.optional(v.number()),
+    mockUsdcMint: v.optional(v.string()),
+    escrowVault: v.optional(v.string()),
+    escrowPda: v.optional(v.string()),
+    fundingTx: v.optional(v.string()),
+    fundedAt: v.optional(v.number()),
+    depositedAmountBaseUnits: v.optional(v.number()),
+    releasedAmountBaseUnits: v.optional(v.number()),
+    reserveAmountBaseUnits: v.optional(v.number()),
+    releaseScheduleBaseUnits: v.optional(v.array(v.number())),
     status: v.union(
       v.literal("reserved"),
       v.literal("active"),
@@ -122,7 +132,63 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_partner", ["partnerWallet"])
+    .index("by_farmer", ["farmerWallet"])
     .index("by_lot", ["lotCode"]),
+
+  milestoneProofs: defineTable({
+    partnershipId: v.id("partnerships"),
+    partnershipPda: v.optional(v.string()),
+    lotCode: v.string(),
+    milestoneIndex: v.number(),
+    proofHash: v.string(),
+    proofTx: v.optional(v.string()),
+    recordedByWallet: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("recorded"),
+      v.literal("rejected"),
+    ),
+    title: v.string(),
+    caption: v.optional(v.string()),
+    imageStorageIds: v.optional(v.array(v.string())),
+    receiptText: v.optional(v.string()),
+    gpsText: v.optional(v.string()),
+    iotPayload: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_partnership", ["partnershipId"])
+    .index("by_partnership_and_milestone", ["partnershipId", "milestoneIndex"]),
+
+  fundReleases: defineTable({
+    partnershipId: v.id("partnerships"),
+    partnershipPda: v.string(),
+    releaseIndex: v.number(),
+    amountBaseUnits: v.number(),
+    releaseTx: v.string(),
+    recipientWallet: v.string(),
+    releasedAt: v.number(),
+  })
+    .index("by_partnership", ["partnershipId"])
+    .index("by_partnership_and_release", ["partnershipId", "releaseIndex"]),
+
+  mockUsdcBalanceSnapshots: defineTable({
+    wallet: v.optional(v.string()),
+    tokenAccount: v.string(),
+    mint: v.string(),
+    role: v.union(
+      v.literal("partner"),
+      v.literal("farmer"),
+      v.literal("vault"),
+      v.literal("other"),
+    ),
+    balanceBaseUnits: v.number(),
+    balanceUiAmount: v.number(),
+    sourceTx: v.optional(v.string()),
+    observedAt: v.number(),
+  })
+    .index("by_token_account", ["tokenAccount"])
+    .index("by_wallet", ["wallet"]),
 
   agentThreads: defineTable({
     wallet: v.string(),

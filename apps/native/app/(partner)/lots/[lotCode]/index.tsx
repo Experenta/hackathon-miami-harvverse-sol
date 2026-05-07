@@ -17,8 +17,8 @@ import {
 	Banner,
 	Button,
 	Card,
+	CollapsibleSection,
 	DetailRow,
-	ListItemCard,
 	MetricCard,
 	Screen,
 	ScreenHeader,
@@ -191,24 +191,23 @@ export default function PartnerLotDetailScreen() {
 		mapOnChainLotStatusToApp(liveLotStatus) !== lot.status;
 
 	return (
-		<Screen scrollable>
+		<Screen scrollable contentContainerStyle={{ gap: theme.spacing.lg }}>
 			{/* Hero */}
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
 					showBack
-					eyebrow="Verified asset"
+					eyebrow={lot.lotCode}
 					title={lot.farmName}
-					subtitle={`Lot ${lot.lotCode} — verifiable agricultural asset ready for partnership.`}
 					trailing={<Badge label={lot.variety} tone="partner" />}
 				/>
 			</Animated.View>
 
-			{/* Status pills */}
+			{/* Status row — only the most critical pills */}
 			<Animated.View entering={FadeIn.delay(50).duration(200)}>
 				<View
 					style={{
 						flexDirection: "row",
-						flexWrap: "wrap",
+						alignItems: "center",
 						gap: theme.spacing.sm,
 					}}
 				>
@@ -216,126 +215,102 @@ export default function PartnerLotDetailScreen() {
 						label={verificationMeta.pillLabel}
 						tone={verificationMeta.pillTone}
 					/>
-					<StatusPill label={selectedNetwork.label} tone="accent" />
-					<StatusPill label={convexStatusLabel} tone="info" />
 					{liveStatusLabel ? (
 						<StatusPill
-							label={`Live: ${liveStatusLabel}`}
+							label={liveStatusLabel}
 							tone={
 								isReservableLotStatus(liveLotStatus)
 									? "success"
 									: "warning"
 							}
 						/>
-					) : null}
+					) : (
+						<StatusPill label={convexStatusLabel} tone="info" />
+					)}
 				</View>
 			</Animated.View>
 
-			{/* Asset snapshot metrics */}
+			{/* Primary metrics — ticket + split */}
 			<Animated.View entering={FadeInUp.delay(75).duration(250)}>
-				<Section
-					title="Asset snapshot"
-					description="Key commercial terms and geography surface first."
-				>
-					<View
-						style={{
-							flexDirection: "row",
-							flexWrap: "wrap",
-							gap: theme.spacing.sm,
-						}}
-					>
-						<MetricCard
-							tone="partner"
-							eyebrow="Ticket"
-							label="Opportunity size"
-							value={ticketDisplay}
-							helper={lot.farmName}
-							style={{ minWidth: 160 }}
-						/>
-						<MetricCard
-							tone="success"
-							eyebrow="Farmer"
-							label="Farmer share"
-							value={`${lot.farmerShareBps / 100}%`}
-							helper="Producer allocation"
-							style={{ minWidth: 160 }}
-						/>
-						<MetricCard
-							tone="info"
-							eyebrow="Partner"
-							label="Partner share"
-							value={`${lot.partnerShareBps / 100}%`}
-							helper="Investor participation"
-							style={{ minWidth: 160 }}
-						/>
-					</View>
-				</Section>
-			</Animated.View>
-
-			{/* Asset identity card */}
-			<Animated.View entering={FadeInUp.delay(50).duration(250)}>
-				<Section
-					title="Asset identity"
-					description="The lot reads as a trackable asset with human and cryptographic anchors."
-				>
-					<ListItemCard
-						disabled
+				<View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+					<MetricCard
 						tone="partner"
-						eyebrow={lot.lotCode}
-						title={lot.farmName}
-						subtitle={`${lot.variety} asset from ${lot.region}, ${lot.country}`}
-						status={{
-							label: verificationMeta.cardStatusLabel,
-							tone: verificationMeta.pillTone,
-						}}
-						highlight={{
-							label: "Area",
-							value: `${trimNumber(lot.areaManzanas)} manzanas`,
-						}}
-						badges={[
-							{ label: lot.variety, tone: "partner" },
-							{ label: `${lot.altitudeMeters}m`, tone: "info" },
-						]}
-						details={[
-							{
-								label: "Location",
-								value: `${lot.region}, ${lot.country}`,
-							},
-							{
-								label: "Coordinates",
-								value: `${lot.latitude}, ${lot.longitude}`,
-							},
-						]}
+						eyebrow="Ticket"
+						label="Opportunity"
+						value={ticketDisplay}
+						helper={`${lot.region}, ${lot.country}`}
+						style={{ flex: 1 }}
 					/>
-				</Section>
+					<MetricCard
+						tone="success"
+						eyebrow="Split"
+						label="Revenue share"
+						value={`${lot.farmerShareBps / 100}/${lot.partnerShareBps / 100}`}
+						helper="Farmer / Partner %"
+						style={{ flex: 1 }}
+					/>
+				</View>
 			</Animated.View>
 
-			{/* Verification record */}
-			<Animated.View entering={FadeInUp.delay(250).duration(250)}>
-				<Section
-					title="Verification record"
-					description="Supporting data confirms whether the mirrored lot matches its on-chain representation."
-					aside={<Badge label="On-chain check" tone="info" />}
+			{/* Sync warning if needed */}
+			{isStatusOutOfSync ? (
+				<Banner
+					tone="warning"
+					title="Status out of sync"
+					description={`Database shows ${convexStatusLabel}, live chain shows ${liveStatusLabel}.`}
+				/>
+			) : null}
+
+			{/* Verification banner — concise */}
+			<Animated.View entering={FadeInUp.delay(50).duration(250)}>
+				<Banner
+					tone={verificationMeta.bannerTone}
+					title={verificationMeta.title}
+					description={verificationMeta.description}
+					accessory={
+						verificationStatus === "loading" ? (
+							<ActivityIndicator size="small" />
+						) : undefined
+					}
+				/>
+			</Animated.View>
+
+			{/* Asset details — collapsed */}
+			<Animated.View entering={FadeInUp.delay(90).duration(250)}>
+				<CollapsibleSection
+					title="Asset details"
+					subtitle={`${lot.variety} · ${trimNumber(lot.areaManzanas)} mz · ${lot.altitudeMeters}m`}
 				>
-					{isStatusOutOfSync ? (
-						<Banner
-							tone="warning"
-							title="Lot state changed on-chain"
-							description={`Convex shows ${convexStatusLabel}, but the live account is ${liveStatusLabel}. Reservation uses the on-chain state.`}
+					<Card variant="muted">
+						<DetailRow label="Farm" value={lot.farmName} />
+						<DetailRow
+							label="Location"
+							value={`${lot.region}, ${lot.country}`}
 						/>
-					) : null}
-					<Banner
-						tone={verificationMeta.bannerTone}
-						title={verificationMeta.title}
-						description={verificationMeta.description}
-						eyebrow="Asset verification"
-						accessory={
-							verificationStatus === "loading" ? (
-								<ActivityIndicator size="small" />
-							) : undefined
-						}
-					/>
-					<Card variant={verificationMeta.cardVariant}>
+						<DetailRow
+							label="Coordinates"
+							value={`${lot.latitude}, ${lot.longitude}`}
+							valueTone="secondary"
+						/>
+						<DetailRow
+							label="Area"
+							value={`${trimNumber(lot.areaManzanas)} manzanas`}
+						/>
+						<DetailRow
+							label="Altitude"
+							value={`${lot.altitudeMeters}m`}
+						/>
+					</Card>
+				</CollapsibleSection>
+			</Animated.View>
+
+			{/* On-chain references — collapsed */}
+			<Animated.View entering={FadeInUp.delay(100).duration(250)}>
+				<CollapsibleSection
+					title="On-chain references"
+					aside={<Badge label={selectedNetwork.label} tone="info" />}
+				>
+					<Card variant="muted">
 						<DetailRow
 							label="Lot PDA"
 							value={
@@ -357,18 +332,13 @@ export default function PartnerLotDetailScreen() {
 							value={verificationMeta.detailValue}
 							valueTone="secondary"
 						/>
-						<DetailRow
-							label="Live status"
-							value={liveStatusLabel ?? "Unknown"}
-							valueTone="secondary"
-						/>
 					</Card>
-				</Section>
+				</CollapsibleSection>
 			</Animated.View>
 
 			{/* AI assistant */}
 			{wallet ? (
-				<Animated.View entering={FadeInUp.delay(90).duration(200)}>
+				<Animated.View entering={FadeInUp.delay(110).duration(200)}>
 					<AiChatPanel
 						wallet={wallet}
 						role="partner"
@@ -414,9 +384,9 @@ function getVerificationMeta(status: VerificationStatus, error: string | null) {
 	switch (status) {
 		case "match":
 			return {
-				title: "On-chain data verified",
+				title: "On-chain verified",
 				description:
-					"Ticket and revenue split fields match the on-chain asset record.",
+					"Ticket and revenue split match the on-chain record.",
 				detailValue: "Match",
 				pillLabel: "Verified",
 				cardStatusLabel: "Asset verified",
@@ -426,9 +396,9 @@ function getVerificationMeta(status: VerificationStatus, error: string | null) {
 			};
 		case "mismatch":
 			return {
-				title: "On-chain data mismatch",
+				title: "Data mismatch",
 				description:
-					"At least one mirrored lot field differs from the on-chain asset record.",
+					"At least one field differs from the on-chain record.",
 				detailValue: "Mismatch",
 				pillLabel: "Mismatch",
 				cardStatusLabel: "Review required",
@@ -438,11 +408,10 @@ function getVerificationMeta(status: VerificationStatus, error: string | null) {
 			};
 		case "not_found":
 			return {
-				title: "Lot PDA not found on-chain",
-				description:
-					"The app could not locate a live on-chain asset record for this lot PDA.",
+				title: "Not found on-chain",
+				description: "No live on-chain record found for this lot PDA.",
 				detailValue: "Not found",
-				pillLabel: "Missing proof",
+				pillLabel: "Missing",
 				cardStatusLabel: "Proof missing",
 				pillTone: "warning" as const,
 				bannerTone: "warning" as const,
@@ -451,9 +420,9 @@ function getVerificationMeta(status: VerificationStatus, error: string | null) {
 		case "error":
 			return {
 				title: "Verification failed",
-				description: error ?? "The on-chain verification check failed.",
+				description: error ?? "The on-chain check failed.",
 				detailValue: "Error",
-				pillLabel: "Check failed",
+				pillLabel: "Error",
 				cardStatusLabel: "Check failed",
 				pillTone: "error" as const,
 				bannerTone: "error" as const,
@@ -462,12 +431,12 @@ function getVerificationMeta(status: VerificationStatus, error: string | null) {
 		case "loading":
 		default:
 			return {
-				title: "Verifying on-chain asset",
+				title: "Verifying asset",
 				description:
-					"The lot PDA is being checked against its live on-chain representation.",
+					"Checking the lot PDA against its on-chain representation.",
 				detailValue: "In progress",
 				pillLabel: "Verifying",
-				cardStatusLabel: "Verification running",
+				cardStatusLabel: "Checking",
 				pillTone: "info" as const,
 				bannerTone: "info" as const,
 				cardVariant: "info" as const,

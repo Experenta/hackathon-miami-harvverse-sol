@@ -17,24 +17,32 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
+  parseClaimMockUsdcInstruction,
   parseCreateFarmerProfileInstruction,
   parseCreateLotInstruction,
   parseCreatePartnerProfileInstruction,
   parseInitializeConfigInstruction,
+  parseInitializeMockUsdcInstruction,
   parsePublishLotInstruction,
   parseRecordMilestoneInstruction,
   parseRecordSettlementInstruction,
   parseRegisterRoleInstruction,
+  parseReleaseKickoffFundsInstruction,
+  parseReleaseMilestoneFundsInstruction,
   parseReservePartnershipInstruction,
   parseUpdateLotHashesInstruction,
+  type ParsedClaimMockUsdcInstruction,
   type ParsedCreateFarmerProfileInstruction,
   type ParsedCreateLotInstruction,
   type ParsedCreatePartnerProfileInstruction,
   type ParsedInitializeConfigInstruction,
+  type ParsedInitializeMockUsdcInstruction,
   type ParsedPublishLotInstruction,
   type ParsedRecordMilestoneInstruction,
   type ParsedRecordSettlementInstruction,
   type ParsedRegisterRoleInstruction,
+  type ParsedReleaseKickoffFundsInstruction,
+  type ParsedReleaseMilestoneFundsInstruction,
   type ParsedReservePartnershipInstruction,
   type ParsedUpdateLotHashesInstruction,
 } from "../instructions";
@@ -48,6 +56,8 @@ export enum HarvverseAccount {
   MilestoneReceipt,
   PartnerProfile,
   Partnership,
+  PartnershipEscrow,
+  PaymentConfig,
   ProgramConfig,
   SettlementReceipt,
   UserRole,
@@ -116,6 +126,28 @@ export function identifyHarvverseAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([45, 86, 107, 130, 86, 89, 132, 16]),
+      ),
+      0,
+    )
+  ) {
+    return HarvverseAccount.PartnershipEscrow;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([252, 166, 185, 239, 186, 79, 212, 152]),
+      ),
+      0,
+    )
+  ) {
+    return HarvverseAccount.PaymentConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([196, 210, 90, 231, 144, 149, 140, 63]),
       ),
       0,
@@ -151,14 +183,18 @@ export function identifyHarvverseAccount(
 }
 
 export enum HarvverseInstruction {
+  ClaimMockUsdc,
   CreateFarmerProfile,
   CreateLot,
   CreatePartnerProfile,
   InitializeConfig,
+  InitializeMockUsdc,
   PublishLot,
   RecordMilestone,
   RecordSettlement,
   RegisterRole,
+  ReleaseKickoffFunds,
+  ReleaseMilestoneFunds,
   ReservePartnership,
   UpdateLotHashes,
 }
@@ -167,6 +203,17 @@ export function identifyHarvverseInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
 ): HarvverseInstruction {
   const data = "data" in instruction ? instruction.data : instruction;
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([194, 237, 210, 215, 208, 134, 239, 47]),
+      ),
+      0,
+    )
+  ) {
+    return HarvverseInstruction.ClaimMockUsdc;
+  }
   if (
     containsBytes(
       data,
@@ -210,6 +257,17 @@ export function identifyHarvverseInstruction(
     )
   ) {
     return HarvverseInstruction.InitializeConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([202, 220, 163, 62, 243, 68, 34, 77]),
+      ),
+      0,
+    )
+  ) {
+    return HarvverseInstruction.InitializeMockUsdc;
   }
   if (
     containsBytes(
@@ -259,6 +317,28 @@ export function identifyHarvverseInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([241, 14, 31, 54, 55, 223, 163, 251]),
+      ),
+      0,
+    )
+  ) {
+    return HarvverseInstruction.ReleaseKickoffFunds;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([44, 226, 97, 240, 228, 187, 163, 115]),
+      ),
+      0,
+    )
+  ) {
+    return HarvverseInstruction.ReleaseMilestoneFunds;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([228, 221, 219, 165, 212, 141, 7, 75]),
       ),
       0,
@@ -286,6 +366,9 @@ export type ParsedHarvverseInstruction<
   TProgram extends string = "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP",
 > =
   | ({
+      instructionType: HarvverseInstruction.ClaimMockUsdc;
+    } & ParsedClaimMockUsdcInstruction<TProgram>)
+  | ({
       instructionType: HarvverseInstruction.CreateFarmerProfile;
     } & ParsedCreateFarmerProfileInstruction<TProgram>)
   | ({
@@ -297,6 +380,9 @@ export type ParsedHarvverseInstruction<
   | ({
       instructionType: HarvverseInstruction.InitializeConfig;
     } & ParsedInitializeConfigInstruction<TProgram>)
+  | ({
+      instructionType: HarvverseInstruction.InitializeMockUsdc;
+    } & ParsedInitializeMockUsdcInstruction<TProgram>)
   | ({
       instructionType: HarvverseInstruction.PublishLot;
     } & ParsedPublishLotInstruction<TProgram>)
@@ -310,6 +396,12 @@ export type ParsedHarvverseInstruction<
       instructionType: HarvverseInstruction.RegisterRole;
     } & ParsedRegisterRoleInstruction<TProgram>)
   | ({
+      instructionType: HarvverseInstruction.ReleaseKickoffFunds;
+    } & ParsedReleaseKickoffFundsInstruction<TProgram>)
+  | ({
+      instructionType: HarvverseInstruction.ReleaseMilestoneFunds;
+    } & ParsedReleaseMilestoneFundsInstruction<TProgram>)
+  | ({
       instructionType: HarvverseInstruction.ReservePartnership;
     } & ParsedReservePartnershipInstruction<TProgram>)
   | ({
@@ -321,6 +413,13 @@ export function parseHarvverseInstruction<TProgram extends string>(
 ): ParsedHarvverseInstruction<TProgram> {
   const instructionType = identifyHarvverseInstruction(instruction);
   switch (instructionType) {
+    case HarvverseInstruction.ClaimMockUsdc: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: HarvverseInstruction.ClaimMockUsdc,
+        ...parseClaimMockUsdcInstruction(instruction),
+      };
+    }
     case HarvverseInstruction.CreateFarmerProfile: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -349,6 +448,13 @@ export function parseHarvverseInstruction<TProgram extends string>(
         ...parseInitializeConfigInstruction(instruction),
       };
     }
+    case HarvverseInstruction.InitializeMockUsdc: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: HarvverseInstruction.InitializeMockUsdc,
+        ...parseInitializeMockUsdcInstruction(instruction),
+      };
+    }
     case HarvverseInstruction.PublishLot: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -375,6 +481,20 @@ export function parseHarvverseInstruction<TProgram extends string>(
       return {
         instructionType: HarvverseInstruction.RegisterRole,
         ...parseRegisterRoleInstruction(instruction),
+      };
+    }
+    case HarvverseInstruction.ReleaseKickoffFunds: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: HarvverseInstruction.ReleaseKickoffFunds,
+        ...parseReleaseKickoffFundsInstruction(instruction),
+      };
+    }
+    case HarvverseInstruction.ReleaseMilestoneFunds: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: HarvverseInstruction.ReleaseMilestoneFunds,
+        ...parseReleaseMilestoneFundsInstruction(instruction),
       };
     }
     case HarvverseInstruction.ReservePartnership: {

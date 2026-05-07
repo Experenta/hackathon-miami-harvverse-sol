@@ -5,14 +5,18 @@ pub mod events;
 pub mod instructions;
 pub mod state;
 
+pub use instructions::claim_mock_usdc::*;
 pub use instructions::create_farmer_profile::*;
 pub use instructions::create_lot::*;
 pub use instructions::create_partner_profile::*;
 pub use instructions::initialize_config::*;
+pub use instructions::initialize_mock_usdc::*;
 pub use instructions::publish_lot::*;
 pub use instructions::record_milestone::*;
 pub use instructions::record_settlement::*;
 pub use instructions::register_role::*;
+pub use instructions::release_kickoff_funds::*;
+pub use instructions::release_milestone_funds::*;
 pub use instructions::reserve_partnership::*;
 pub use instructions::update_lot_hashes::*;
 
@@ -38,6 +42,27 @@ pub struct UpdateLotHashesInput {
     pub plan_hash: Option<[u8; 32]>,
     pub media_manifest_hash: Option<[u8; 32]>,
     pub sensor_manifest_hash: Option<[u8; 32]>,
+}
+
+/// Input struct for initialize_mock_usdc instruction.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct InitializeMockUsdcInput {
+    pub decimals: u8,
+    pub faucet_amount: u64,
+}
+
+/// Input struct for reserve_partnership instruction.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ReservePartnershipInput {
+    pub terms_hash: [u8; 32],
+    pub ticket_usdc_cents: u64,
+    pub release_amounts: [u64; 6],
+}
+
+/// Input struct for release_milestone_funds instruction.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ReleaseMilestoneFundsInput {
+    pub release_index: u8,
 }
 
 /// Input struct for record_settlement instruction.
@@ -96,12 +121,29 @@ pub mod harvverse {
         instructions::publish_lot::handler(ctx)
     }
 
-    pub fn update_lot_hashes(ctx: Context<UpdateLotHashes>, input: UpdateLotHashesInput) -> Result<()> {
+    pub fn update_lot_hashes(
+        ctx: Context<UpdateLotHashes>,
+        input: UpdateLotHashesInput,
+    ) -> Result<()> {
         instructions::update_lot_hashes::handler(ctx, input)
     }
 
-    pub fn reserve_partnership(ctx: Context<ReservePartnership>, terms_hash: [u8; 32]) -> Result<()> {
-        instructions::reserve_partnership::handler(ctx, terms_hash)
+    pub fn initialize_mock_usdc(
+        ctx: Context<InitializeMockUsdc>,
+        input: InitializeMockUsdcInput,
+    ) -> Result<()> {
+        instructions::initialize_mock_usdc::handler(ctx, input)
+    }
+
+    pub fn claim_mock_usdc(ctx: Context<ClaimMockUsdc>) -> Result<()> {
+        instructions::claim_mock_usdc::handler(ctx)
+    }
+
+    pub fn reserve_partnership(
+        ctx: Context<ReservePartnership>,
+        input: ReservePartnershipInput,
+    ) -> Result<()> {
+        instructions::reserve_partnership::handler(ctx, input)
     }
 
     pub fn record_milestone(
@@ -110,6 +152,17 @@ pub mod harvverse {
         proof_hash: [u8; 32],
     ) -> Result<()> {
         instructions::record_milestone::handler(ctx, milestone_index, proof_hash)
+    }
+
+    pub fn release_kickoff_funds(ctx: Context<ReleaseKickoffFunds>) -> Result<()> {
+        instructions::release_kickoff_funds::handler(ctx)
+    }
+
+    pub fn release_milestone_funds(
+        ctx: Context<ReleaseMilestoneFunds>,
+        input: ReleaseMilestoneFundsInput,
+    ) -> Result<()> {
+        instructions::release_milestone_funds::handler(ctx, input)
     }
 
     pub fn record_settlement(ctx: Context<RecordSettlement>, input: SettlementInput) -> Result<()> {

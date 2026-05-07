@@ -4,6 +4,7 @@ export { Badge, type BadgeTone } from "./badge";
 export { Banner, type BannerTone } from "./banner";
 export { Button, type ButtonVariant } from "./button";
 export { Card } from "./card";
+export { CollapsibleSection } from "./collapsible-section";
 export { DetailRow } from "./detail-row";
 export { FormField } from "./form-field";
 export { ListItemCard } from "./list-item-card";

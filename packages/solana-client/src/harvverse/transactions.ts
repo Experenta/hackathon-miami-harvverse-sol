@@ -12,7 +12,12 @@ import {
   getCreateLotInstructionAsync,
   getPublishLotInstruction,
   getUpdateLotHashesInstruction,
+  getInitializeMockUsdcInstructionAsync,
+  getClaimMockUsdcInstructionAsync,
   getReservePartnershipInstructionAsync,
+  getRecordMilestoneInstructionAsync,
+  getReleaseKickoffFundsInstructionAsync,
+  getReleaseMilestoneFundsInstructionAsync,
   getRecordSettlementInstructionAsync,
   type RegisterRoleInstruction,
   type CreateFarmerProfileInstruction,
@@ -20,7 +25,9 @@ import {
   type CreateLotInstruction,
   type PublishLotInstruction,
   type UpdateLotHashesInstruction,
+  type InitializeMockUsdcInstruction,
   type ReservePartnershipInstruction,
+  type RecordMilestoneInstruction,
   type RecordSettlementInstruction,
 } from "../generated/harvverse";
 import type {
@@ -30,9 +37,32 @@ import type {
   CreateLotTxInput,
   PublishLotTxInput,
   UpdateLotHashesTxInput,
+  InitializeMockUsdcTxInput,
+  ClaimMockUsdcTxInput,
   ReservePartnershipTxInput,
+  RecordMilestoneTxInput,
+  ReleaseKickoffFundsTxInput,
+  ReleaseMilestoneFundsTxInput,
   RecordSettlementTxInput,
 } from "./types";
+import {
+  AccountRole,
+  type Address,
+  type Instruction,
+  type TransactionSigner,
+} from "@solana/kit";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  SYSTEM_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+  ZAFIRO_RELEASE_AMOUNTS_BASE_UNITS,
+  ZAFIRO_TICKET_USDC_CENTS,
+} from "./constants";
+import {
+  deriveAssociatedTokenAccount,
+  deriveMilestonePda,
+  findMockUsdcMintPda,
+} from "./pda";
 
 /**
  * Builds a `register_role` instruction.
@@ -129,17 +159,166 @@ export function buildUpdateLotHashesTx(
 }
 
 /**
- * Builds a `reserve_partnership` instruction.
+ * Builds an `initialize_mock_usdc` instruction.
+ * The ProgramConfig, PaymentConfig, mint, and mint authority PDAs are derived automatically.
+ */
+export async function buildInitializeMockUsdcTx(
+  input: InitializeMockUsdcTxInput,
+): Promise<InitializeMockUsdcInstruction> {
+  return getInitializeMockUsdcInstructionAsync({
+    authority: input.authority,
+    decimals: input.decimals,
+    faucetAmount: input.faucetAmount,
+  });
+}
+
+/**
+ * Builds an idempotent associated token account create instruction.
+ * The instruction is safe to include before faucet/release transactions.
+ */
+export function buildCreateAssociatedTokenAccountIdempotentTx(input: {
+  payer: TransactionSigner;
+  owner: Address;
+  mint: Address;
+  tokenAccount: Address;
+}): Instruction {
+  return Object.freeze({
+    programAddress: ASSOCIATED_TOKEN_PROGRAM_ID,
+    accounts: [
+      Object.freeze({
+        address: input.payer.address,
+        role: AccountRole.WRITABLE_SIGNER,
+        signer: input.payer,
+      }),
+      Object.freeze({
+        address: input.tokenAccount,
+        role: AccountRole.WRITABLE,
+      }),
+      Object.freeze({ address: input.owner, role: AccountRole.READONLY }),
+      Object.freeze({ address: input.mint, role: AccountRole.READONLY }),
+      Object.freeze({
+        address: SYSTEM_PROGRAM_ID,
+        role: AccountRole.READONLY,
+      }),
+      Object.freeze({ address: TOKEN_PROGRAM_ID, role: AccountRole.READONLY }),
+    ],
+    data: new Uint8Array([1]),
+  });
+}
+
+/**
+ * Builds a claimant ATA create instruction followed by `claim_mock_usdc`.
+ */
+export async function buildClaimMockUsdcTx(
+  input: ClaimMockUsdcTxInput,
+): Promise<Instruction[]> {
+  const [claimantAta] = await deriveAssociatedTokenAccount(
+    input.claimant.address,
+    input.mockUsdcMint,
+  );
+  const createAtaIx = buildCreateAssociatedTokenAccountIdempotentTx({
+    payer: input.claimant,
+    owner: input.claimant.address,
+    mint: input.mockUsdcMint,
+    tokenAccount: claimantAta,
+  });
+  const claimIx = await getClaimMockUsdcInstructionAsync({
+    claimant: input.claimant,
+    mockUsdcMint: input.mockUsdcMint,
+    claimantMockUsdcAta: claimantAta,
+  });
+
+  return [createAtaIx, claimIx];
+}
+
+/**
+ * Builds a funded `reserve_partnership` instruction.
  * The UserRole, PartnerProfile, and Partnership PDAs are derived automatically.
  */
 export async function buildReservePartnershipTx(
   input: ReservePartnershipTxInput,
 ): Promise<ReservePartnershipInstruction> {
+  const mockUsdcMint = input.mockUsdcMint ?? (await findMockUsdcMintPda())[0];
+
   return getReservePartnershipInstructionAsync({
     partner: input.partner,
     lot: input.lotPda,
+    mockUsdcMint,
     termsHash: input.termsHash,
+    ticketUsdcCents: input.ticketUsdcCents ?? ZAFIRO_TICKET_USDC_CENTS,
+    releaseAmounts: input.releaseAmounts ?? [
+      ...ZAFIRO_RELEASE_AMOUNTS_BASE_UNITS,
+    ],
   });
+}
+
+/**
+ * Builds a `record_milestone` instruction.
+ * The ProgramConfig and MilestoneReceipt PDAs are derived automatically.
+ */
+export async function buildRecordMilestoneTx(
+  input: RecordMilestoneTxInput,
+): Promise<RecordMilestoneInstruction> {
+  const [milestoneReceipt] = await deriveMilestonePda(
+    input.partnershipPda,
+    input.milestoneIndex,
+  );
+  return getRecordMilestoneInstructionAsync({
+    recorder: input.recorder,
+    partnership: input.partnershipPda,
+    milestoneReceipt,
+    milestoneIndex: input.milestoneIndex,
+    proofHash: input.proofHash,
+  });
+}
+
+/**
+ * Builds a farmer ATA create instruction followed by `release_kickoff_funds`.
+ */
+export async function buildReleaseKickoffFundsTx(
+  input: ReleaseKickoffFundsTxInput,
+): Promise<Instruction[]> {
+  const createFarmerAtaIx = buildCreateAssociatedTokenAccountIdempotentTx({
+    payer: input.signer,
+    owner: input.farmer,
+    mint: input.mockUsdcMint,
+    tokenAccount: input.farmerMockUsdcAta,
+  });
+  const releaseIx = await getReleaseKickoffFundsInstructionAsync({
+    signer: input.signer,
+    partnership: input.partnershipPda,
+    lot: input.lotPda,
+    vaultTokenAccount: input.vaultTokenAccount,
+    farmerMockUsdcAta: input.farmerMockUsdcAta,
+    mockUsdcMint: input.mockUsdcMint,
+  });
+
+  return [createFarmerAtaIx, releaseIx];
+}
+
+/**
+ * Builds a farmer ATA create instruction followed by `release_milestone_funds`.
+ */
+export async function buildReleaseMilestoneFundsTx(
+  input: ReleaseMilestoneFundsTxInput,
+): Promise<Instruction[]> {
+  const createFarmerAtaIx = buildCreateAssociatedTokenAccountIdempotentTx({
+    payer: input.signer,
+    owner: input.farmer,
+    mint: input.mockUsdcMint,
+    tokenAccount: input.farmerMockUsdcAta,
+  });
+  const releaseIx = await getReleaseMilestoneFundsInstructionAsync({
+    signer: input.signer,
+    partnership: input.partnershipPda,
+    requiredMilestoneReceipt: input.requiredMilestoneReceipt,
+    vaultTokenAccount: input.vaultTokenAccount,
+    farmerMockUsdcAta: input.farmerMockUsdcAta,
+    mockUsdcMint: input.mockUsdcMint,
+    releaseIndex: input.releaseIndex,
+  });
+
+  return [createFarmerAtaIx, releaseIx];
 }
 
 /**

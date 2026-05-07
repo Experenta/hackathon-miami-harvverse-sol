@@ -1,10 +1,14 @@
+pub mod claim_mock_usdc;
 pub mod create_farmer_profile;
 pub mod create_lot;
 pub mod create_partner_profile;
 pub mod initialize_config;
+pub mod initialize_mock_usdc;
 pub mod publish_lot;
 pub mod record_milestone;
 pub mod record_settlement;
 pub mod register_role;
+pub mod release_kickoff_funds;
+pub mod release_milestone_funds;
 pub mod reserve_partnership;
 pub mod update_lot_hashes;

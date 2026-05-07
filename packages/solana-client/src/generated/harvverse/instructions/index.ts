@@ -6,13 +6,17 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from "./claimMockUsdc";
 export * from "./createFarmerProfile";
 export * from "./createLot";
 export * from "./createPartnerProfile";
 export * from "./initializeConfig";
+export * from "./initializeMockUsdc";
 export * from "./publishLot";
 export * from "./recordMilestone";
 export * from "./recordSettlement";
 export * from "./registerRole";
+export * from "./releaseKickoffFunds";
+export * from "./releaseMilestoneFunds";
 export * from "./reservePartnership";
 export * from "./updateLotHashes";

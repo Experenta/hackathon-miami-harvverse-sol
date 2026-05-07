@@ -8,9 +8,14 @@
 
 export * from "./createPartnerProfileUserRole";
 export * from "./farmerProfile";
+export * from "./mockUsdcMint";
+export * from "./mockUsdcMintAuthority";
 export * from "./partnerProfile";
 export * from "./partnership";
+export * from "./partnershipEscrow";
+export * from "./paymentConfig";
 export * from "./programConfig";
 export * from "./registerRoleUserRole";
 export * from "./settlementReceipt";
 export * from "./userRole";
+export * from "./vaultAuthority";

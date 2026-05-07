@@ -11,6 +11,8 @@ export * from "./lot";
 export * from "./milestoneReceipt";
 export * from "./partnerProfile";
 export * from "./partnership";
+export * from "./partnershipEscrow";
+export * from "./paymentConfig";
 export * from "./programConfig";
 export * from "./settlementReceipt";
 export * from "./userRole";

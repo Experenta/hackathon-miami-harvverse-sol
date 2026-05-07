@@ -6,10 +6,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { useRouter, type Href } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useMobileWallet } from "@wallet-ui/react-native-kit";
+import { formatMockUsdcBaseUnits } from "@repo/solana-client";
 import { DisconnectWalletButton } from "@/components/disconnect-wallet-button";
 import {
-	ActionBar,
 	Banner,
 	Button,
 	ListItemCard,
@@ -18,26 +17,33 @@ import {
 	Section,
 } from "@/components/ui";
 import { useFarmerLots } from "@/features/farmer/use-farmer-lots";
+import { useFarmerPartnerships } from "@/features/partner/use-partnership";
 import { useRole } from "@/features/role/use-role";
 import { useTheme } from "@/theme";
 import { ellipsify } from "@/utils/ellipsify";
 
 export default function FarmerHomeScreen() {
-	const { account } = useMobileWallet();
 	const { rolePda } = useRole();
 	const { lots, isLoading } = useFarmerLots();
+	const { partnerships, isLoading: isLoadingPartnerships } =
+		useFarmerPartnerships();
 	const router = useRouter();
 	const { theme } = useTheme();
 
-	const publishedLots = lots.filter(
-		(lot) => lot.status === "published",
-	).length;
 	const activeLots = lots.filter((lot) =>
 		["published", "reserved", "in_cycle"].includes(lot.status),
 	).length;
 	const totalTicketUsdcCents = lots.reduce(
 		(total, lot) => total + lot.ticketUsdcCents,
 		0,
+	);
+	const fundedPartnerships = partnerships.filter((partnership) =>
+		Boolean(partnership.fundingTx),
+	);
+	const totalEscrowedBaseUnits = fundedPartnerships.reduce(
+		(total, partnership) =>
+			total + BigInt(partnership.depositedAmountBaseUnits ?? 0),
+		0n,
 	);
 
 	return (
@@ -48,12 +54,12 @@ export default function FarmerHomeScreen() {
 				keyExtractor={(item) => item._id}
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{
-					gap: theme.spacing.lg,
+					gap: theme.spacing.md,
 					paddingBottom: theme.spacing.xl,
 				}}
 				ListHeaderComponent={
 					<View style={{ gap: theme.spacing.lg }}>
-						{/* Compact header row */}
+						{/* Header row */}
 						<Animated.View entering={FadeInDown.duration(200)}>
 							<View
 								style={{
@@ -63,18 +69,6 @@ export default function FarmerHomeScreen() {
 								}}
 							>
 								<View style={{ gap: 2 }}>
-									<Text
-										style={[
-											theme.typography.labelSm,
-											{
-												color: theme.colors.text.brand,
-												letterSpacing: 1.2,
-												textTransform: "uppercase",
-											},
-										]}
-									>
-										Farmer
-									</Text>
 									<Text
 										style={[
 											theme.typography.h1,
@@ -88,6 +82,19 @@ export default function FarmerHomeScreen() {
 									>
 										Portfolio
 									</Text>
+									{rolePda ? (
+										<Text
+											style={[
+												theme.typography.caption,
+												{
+													color: theme.colors.text
+														.brand,
+												},
+											]}
+										>
+											Farmer · {ellipsify(rolePda, 4)}
+										</Text>
+									) : null}
 								</View>
 								<View
 									style={{
@@ -125,45 +132,7 @@ export default function FarmerHomeScreen() {
 							</View>
 						</Animated.View>
 
-						{/* Inline identity row */}
-						{rolePda ? (
-							<Animated.View
-								entering={FadeIn.delay(75).duration(150)}
-							>
-								<View
-									style={{
-										flexDirection: "row",
-										alignItems: "center",
-										gap: theme.spacing.xs,
-										backgroundColor:
-											"rgba(147, 216, 50, 0.08)",
-										borderRadius: theme.radius.sm,
-										paddingHorizontal: theme.spacing.sm,
-										paddingVertical: 6,
-										alignSelf: "flex-start",
-									}}
-								>
-									<View
-										style={{
-											width: 8,
-											height: 8,
-											borderRadius: 4,
-											backgroundColor: "#93D832",
-										}}
-									/>
-									<Text
-										style={[
-											theme.typography.caption,
-											{ color: theme.colors.text.brand },
-										]}
-									>
-										Role live · {ellipsify(rolePda, 4)}
-									</Text>
-								</View>
-							</Animated.View>
-						) : null}
-
-						{/* Metrics row */}
+						{/* Metrics — 2 cards, clean */}
 						<Animated.View
 							entering={FadeInUp.delay(50).duration(200)}
 						>
@@ -176,18 +145,22 @@ export default function FarmerHomeScreen() {
 								<MetricCard
 									tone="farmer"
 									eyebrow="Inventory"
-									label="Total lots"
+									label="Lots"
 									value={String(lots.length)}
 									helper={`${activeLots} live`}
-									style={{ minWidth: 100 }}
+									style={{ flex: 1 }}
 								/>
 								<MetricCard
 									tone="success"
 									eyebrow="Capital"
 									label="Ticketed"
 									value={formatUsd(totalTicketUsdcCents)}
-									helper={`${publishedLots} published`}
-									style={{ minWidth: 100 }}
+									helper={
+										fundedPartnerships.length > 0
+											? `${formatMockUsdcBaseUnits(totalEscrowedBaseUnits)} escrowed`
+											: "No escrow yet"
+									}
+									style={{ flex: 1 }}
 								/>
 							</View>
 						</Animated.View>
@@ -203,6 +176,66 @@ export default function FarmerHomeScreen() {
 								}
 							/>
 						</Animated.View>
+
+						{/* Funded partnerships — compact inline list */}
+						{fundedPartnerships.length > 0 ? (
+							<Animated.View
+								entering={FadeInUp.delay(85).duration(200)}
+							>
+								<Section title="Funded partnerships">
+									<View style={{ gap: theme.spacing.sm }}>
+										{fundedPartnerships.map(
+											(partnership) => (
+												<ListItemCard
+													key={partnership._id}
+													accessibilityLabel={`Funded partnership for ${partnership.lotCode}`}
+													onPress={() =>
+														router.push(
+															`/(farmer)/partnerships/${partnership._id}` as Href,
+														)
+													}
+													tone="farmer"
+													eyebrow={
+														partnership.lotCode
+													}
+													title={`Lot ${partnership.lotCode}`}
+													subtitle={`Partner ${ellipsify(partnership.partnerWallet)}`}
+													status={mapFarmerStatus(
+														"in_cycle",
+													)}
+													highlight={{
+														label: "Funded",
+														value: formatMockUsdcBaseUnits(
+															partnership.depositedAmountBaseUnits ??
+																0,
+														),
+													}}
+													details={[
+														{
+															label: "Released",
+															value: formatMockUsdcBaseUnits(
+																partnership.releasedAmountBaseUnits ??
+																	0,
+															),
+														},
+													]}
+												/>
+											),
+										)}
+									</View>
+								</Section>
+							</Animated.View>
+						) : isLoadingPartnerships ? (
+							<Animated.View
+								entering={FadeIn.delay(85).duration(150)}
+							>
+								<Banner
+									tone="info"
+									title="Loading partnerships"
+									description="Checking for active escrow positions."
+								/>
+							</Animated.View>
+						) : null}
 
 						{/* List divider */}
 						<View
@@ -270,16 +303,10 @@ export default function FarmerHomeScreen() {
 						subtitle={`${item.variety} · ${item.region}, ${item.country}`}
 						status={mapFarmerStatus(item.status)}
 						highlight={{
-							label: "Ticket size",
+							label: "Ticket",
 							value: formatUsd(item.ticketUsdcCents),
 						}}
-						badges={[
-							{ label: item.variety, tone: "brand" },
-							{
-								label: `${trimNumber(item.areaManzanas)} mz`,
-								tone: "neutral",
-							},
-						]}
+						badges={[{ label: item.variety, tone: "brand" }]}
 						details={[
 							{
 								label: "Split",
@@ -315,12 +342,8 @@ function mapFarmerStatus(status: string) {
 }
 
 function formatUsd(cents: number) {
-	return `$${(cents / 100).toLocaleString(undefined, {
+	return `${(cents / 100).toLocaleString(undefined, {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 0,
 	})}`;
-}
-
-function trimNumber(value: number) {
-	return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }

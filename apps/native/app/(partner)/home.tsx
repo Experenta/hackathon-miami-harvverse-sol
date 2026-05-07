@@ -7,8 +7,13 @@ import Animated, {
 import { useRouter, type Href } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
+import {
+	formatMockUsdcBaseUnits,
+	usdcCentsToMockUsdcBaseUnits,
+} from "@repo/solana-client";
 import { DisconnectWalletButton } from "@/components/disconnect-wallet-button";
 import {
+	Badge,
 	Banner,
 	Button,
 	ListItemCard,
@@ -17,9 +22,14 @@ import {
 } from "@/components/ui";
 import { AiChatPanel } from "@/features/agent/ai-chat-panel";
 import { usePartnerships } from "@/features/partner/use-partnership";
+import { usePartnershipEscrowBalances } from "@/features/partner/use-mock-usdc";
 import { useRole } from "@/features/role/use-role";
 import { useTheme } from "@/theme";
 import { ellipsify } from "@/utils/ellipsify";
+
+type PartnerPartnership = ReturnType<
+	typeof usePartnerships
+>["partnerships"][number];
 
 export default function PartnerHomeScreen() {
 	const { account } = useMobileWallet();
@@ -29,15 +39,24 @@ export default function PartnerHomeScreen() {
 	const { theme } = useTheme();
 	const wallet = account?.address?.toString() ?? "";
 
-	const reservedCount = partnerships.filter(
-		(partnership) => partnership.status === "reserved",
-	).length;
 	const activeCount = partnerships.filter(
 		(partnership) => partnership.status === "active",
 	).length;
-	const settledCount = partnerships.filter(
-		(partnership) => partnership.status === "settled",
+	const fundedCount = partnerships.filter((partnership) =>
+		Boolean(partnership.fundingTx),
 	).length;
+	const totalFundedBaseUnits = partnerships.reduce((total, partnership) => {
+		if (partnership.depositedAmountBaseUnits) {
+			return total + BigInt(partnership.depositedAmountBaseUnits);
+		}
+		if (partnership.ticketUsdcCents) {
+			return (
+				total +
+				usdcCentsToMockUsdcBaseUnits(partnership.ticketUsdcCents)
+			);
+		}
+		return total;
+	}, 0n);
 
 	return (
 		<Screen contentContainerStyle={{ paddingBottom: theme.spacing.sm }}>
@@ -47,12 +66,12 @@ export default function PartnerHomeScreen() {
 				keyExtractor={(item) => item._id}
 				showsVerticalScrollIndicator={false}
 				contentContainerStyle={{
-					gap: theme.spacing.lg,
+					gap: theme.spacing.md,
 					paddingBottom: theme.spacing.xl,
 				}}
 				ListHeaderComponent={
 					<View style={{ gap: theme.spacing.lg }}>
-						{/* Compact header row */}
+						{/* Header row */}
 						<Animated.View entering={FadeInDown.duration(200)}>
 							<View
 								style={{
@@ -62,18 +81,6 @@ export default function PartnerHomeScreen() {
 								}}
 							>
 								<View style={{ gap: 2 }}>
-									<Text
-										style={[
-											theme.typography.labelSm,
-											{
-												color: "#67B9C1",
-												letterSpacing: 1.2,
-												textTransform: "uppercase",
-											},
-										]}
-									>
-										Partner
-									</Text>
 									<Text
 										style={[
 											theme.typography.h1,
@@ -87,50 +94,54 @@ export default function PartnerHomeScreen() {
 									>
 										Partnerships
 									</Text>
+									{rolePda ? (
+										<Text
+											style={[
+												theme.typography.caption,
+												{ color: "#67B9C1" },
+											]}
+										>
+											Partner · {ellipsify(rolePda, 4)}
+										</Text>
+									) : null}
 								</View>
-								<DisconnectWalletButton />
-							</View>
-						</Animated.View>
-
-						{/* Inline identity row */}
-						{rolePda ? (
-							<Animated.View
-								entering={FadeIn.delay(75).duration(150)}
-							>
 								<View
 									style={{
 										flexDirection: "row",
 										alignItems: "center",
-										gap: theme.spacing.xs,
-										backgroundColor:
-											"rgba(103, 185, 193, 0.08)",
-										borderRadius: theme.radius.sm,
-										paddingHorizontal: theme.spacing.sm,
-										paddingVertical: 6,
-										alignSelf: "flex-start",
+										gap: theme.spacing.sm,
 									}}
 								>
-									<View
+									<TouchableOpacity
+										accessibilityLabel="Edit profile"
+										accessibilityRole="button"
+										onPress={() =>
+											router.push(
+												"/(partner)/profile" as Href,
+											)
+										}
 										style={{
-											width: 8,
-											height: 8,
-											borderRadius: 4,
-											backgroundColor: "#67B9C1",
+											width: 36,
+											height: 36,
+											borderRadius: 18,
+											backgroundColor:
+												theme.colors.surface.subtle,
+											alignItems: "center",
+											justifyContent: "center",
 										}}
-									/>
-									<Text
-										style={[
-											theme.typography.caption,
-											{ color: "#67B9C1" },
-										]}
 									>
-										Role live · {ellipsify(rolePda, 4)}
-									</Text>
+										<MaterialIcons
+											name="person-outline"
+											size={18}
+											color={theme.colors.text.muted}
+										/>
+									</TouchableOpacity>
+									<DisconnectWalletButton />
 								</View>
-							</Animated.View>
-						) : null}
+							</View>
+						</Animated.View>
 
-						{/* Metrics row */}
+						{/* Metrics — 2 cards instead of 3 */}
 						<Animated.View
 							entering={FadeInUp.delay(50).duration(200)}
 						>
@@ -142,19 +153,21 @@ export default function PartnerHomeScreen() {
 							>
 								<MetricCard
 									tone="partner"
-									eyebrow="Pipeline"
+									eyebrow="Portfolio"
 									label="Positions"
 									value={String(partnerships.length)}
-									helper={`${reservedCount} reserved`}
-									style={{ minWidth: 100 }}
+									helper={`${activeCount} active`}
+									style={{ flex: 1 }}
 								/>
 								<MetricCard
 									tone="success"
-									eyebrow="Active"
-									label="In cycle"
-									value={String(activeCount)}
-									helper={`${settledCount} settled`}
-									style={{ minWidth: 100 }}
+									eyebrow="Capital"
+									label="Deployed"
+									value={formatMockUsdcBaseUnits(
+										totalFundedBaseUnits,
+									)}
+									helper={`${fundedCount} funded`}
+									style={{ flex: 1 }}
 								/>
 							</View>
 						</Animated.View>
@@ -172,6 +185,7 @@ export default function PartnerHomeScreen() {
 							/>
 						</Animated.View>
 
+						{/* AI assistant */}
 						{wallet ? (
 							<Animated.View
 								entering={FadeInUp.delay(90).duration(200)}
@@ -237,36 +251,73 @@ export default function PartnerHomeScreen() {
 					)
 				}
 				renderItem={({ item }) => (
-					<ListItemCard
-						accessibilityLabel={`Partnership for lot ${item.lotCode}`}
+					<PartnerPartnershipCard
+						item={item}
 						onPress={() =>
 							router.push(
-								`/(partner)/partnerships/${item._id}/settlement` as Href,
+								`/(partner)/partnerships/${item._id}` as Href,
 							)
 						}
-						tone="partner"
-						eyebrow={item.lotCode}
-						title={`Lot ${item.lotCode}`}
-						subtitle={`Farmer ${ellipsify(item.farmerWallet)}`}
-						status={mapPartnerStatus(item.status)}
-						badges={[
-							{
-								label: item.partnershipPda
-									? "On-chain"
-									: "Pending",
-								tone: item.partnershipPda ? "info" : "neutral",
-							},
-						]}
-						details={[
-							{
-								label: "Farmer",
-								value: ellipsify(item.farmerWallet),
-							},
-						]}
 					/>
 				)}
 			/>
 		</Screen>
+	);
+}
+
+function PartnerPartnershipCard({
+	item,
+	onPress,
+}: {
+	item: PartnerPartnership;
+	onPress: () => void;
+}) {
+	const escrow = usePartnershipEscrowBalances({
+		partnershipPda: item.partnershipPda,
+		partnerWallet: item.partnerWallet,
+		farmerWallet: item.farmerWallet,
+	});
+
+	const depositedBaseUnits =
+		escrow.data?.depositedAmountBaseUnits ??
+		(item.depositedAmountBaseUnits != null
+			? BigInt(item.depositedAmountBaseUnits)
+			: item.ticketUsdcCents != null
+				? usdcCentsToMockUsdcBaseUnits(item.ticketUsdcCents)
+				: 0n);
+	const releasedBaseUnits =
+		escrow.data?.releasedAmountBaseUnits ??
+		BigInt(item.releasedAmountBaseUnits ?? 0);
+
+	return (
+		<ListItemCard
+			accessibilityLabel={`Partnership for lot ${item.lotCode}`}
+			onPress={onPress}
+			tone="partner"
+			eyebrow={item.lotCode}
+			title={`Lot ${item.lotCode}`}
+			subtitle={`Farmer ${ellipsify(item.farmerWallet)}`}
+			status={mapPartnerStatus(item.status)}
+			highlight={{
+				label: item.fundingTx ? "Funded" : "Pending",
+				value:
+					depositedBaseUnits > 0n
+						? formatMockUsdcBaseUnits(depositedBaseUnits)
+						: "Awaiting escrow",
+			}}
+			badges={[
+				{
+					label: item.partnershipPda ? "On-chain" : "Pending",
+					tone: item.partnershipPda ? "info" : "neutral",
+				},
+			]}
+			details={[
+				{
+					label: "Released",
+					value: formatMockUsdcBaseUnits(releasedBaseUnits),
+				},
+			]}
+		/>
 	);
 }
 

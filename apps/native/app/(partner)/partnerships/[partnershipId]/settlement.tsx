@@ -11,6 +11,7 @@ import {
 	Badge,
 	Banner,
 	Card,
+	CollapsibleSection,
 	DetailRow,
 	MetricCard,
 	Screen,
@@ -71,140 +72,56 @@ export default function SettlementPreviewScreen() {
 	);
 
 	return (
-		<Screen scrollable contentContainerStyle={{ gap: theme.spacing.xl }}>
-			{/* Hero */}
+		<Screen scrollable contentContainerStyle={{ gap: theme.spacing.lg }}>
+			{/* Header */}
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
 					showBack
-					eyebrow="Yield statement"
+					eyebrow={`Lot ${partnership.lotCode}`}
 					title="Settlement preview"
-					subtitle={`Projected settlement math for lot ${partnership.lotCode}.`}
 				/>
 			</Animated.View>
 
-			{/* Status */}
+			{/* Status — minimal */}
 			<Animated.View entering={FadeIn.delay(50).duration(200)}>
 				<View
 					style={{
 						flexDirection: "row",
-						flexWrap: "wrap",
-						gap: theme.spacing.md,
+						alignItems: "center",
+						gap: theme.spacing.sm,
 					}}
 				>
 					<StatusPill label={partnership.status} tone="partner" />
-					<StatusPill label="Demo economics" tone="warning" />
 					<Badge label="Projected" tone="warning" />
 				</View>
 			</Animated.View>
 
-			{/* Yield statement metrics */}
+			{/* Key numbers — 2 cards */}
 			<Animated.View entering={FadeInUp.delay(75).duration(250)}>
-				<Section
-					title="Yield statement"
-					description="Real-world framing for output, revenue, cost, and distributable value."
-				>
-					<View
-						style={{
-							flexDirection: "row",
-							flexWrap: "wrap",
-							gap: theme.spacing.md,
-						}}
-					>
-						<MetricCard
-							label="Harvest yield"
-							value={`${DEMO_YIELD_QQ} qq`}
-							helper={`${totalLbs.toFixed(1)} lb equivalent`}
-							eyebrow="Output"
-							tone="success"
-							style={{ minWidth: 160 }}
-						/>
-						<MetricCard
-							label="Gross revenue"
-							value={formatUsd(revenueCents)}
-							helper={`$${PRICE_PER_LB.toFixed(2)} per lb`}
-							eyebrow="Market"
-							tone="info"
-							style={{ minWidth: 160 }}
-						/>
-						<MetricCard
-							label="Operating cost"
-							value={formatUsd(costCents)}
-							helper="Production + processing"
-							eyebrow="Expense"
-							tone="default"
-							style={{ minWidth: 160 }}
-						/>
-						<MetricCard
-							label="Net distributable"
-							value={formatUsd(profitCents)}
-							helper="Gross revenue minus cost"
-							eyebrow="Settlement"
-							tone="partner"
-							style={{ minWidth: 160 }}
-						/>
-					</View>
-				</Section>
+				<View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+					<MetricCard
+						label="Net profit"
+						value={formatUsd(profitCents)}
+						helper={`Revenue ${formatUsd(revenueCents)}`}
+						eyebrow="Settlement"
+						tone="partner"
+						style={{ flex: 1 }}
+					/>
+					<MetricCard
+						label="Your share"
+						value={formatUsd(partnerShareCents)}
+						helper={`${partnerShareBps / 100}% of profit`}
+						eyebrow="Partner"
+						tone="success"
+						style={{ flex: 1 }}
+					/>
+				</View>
 			</Animated.View>
 
-			{/* Partnership statement */}
-			<Animated.View entering={FadeInUp.delay(50).duration(250)}>
-				<Section
-					title="Partnership statement"
-					description="Primary commercial fields stay front and center."
-					aside={<Badge label={partnership.lotCode} tone="partner" />}
-				>
-					<Card variant="accent">
-						<DetailRow label="Lot" value={partnership.lotCode} />
-						<DetailRow
-							label="Farmer"
-							value={ellipsify(partnership.farmerWallet)}
-							mono
-							valueTone="secondary"
-						/>
-						<DetailRow label="Status" value={partnership.status} />
-						{partnership.partnershipPda ? (
-							<DetailRow
-								label="Partnership PDA"
-								value={ellipsify(partnership.partnershipPda)}
-								mono
-								valueTone="secondary"
-							/>
-						) : null}
-					</Card>
-				</Section>
-			</Animated.View>
-
-			{/* Settlement breakdown */}
-			<Animated.View entering={FadeInUp.delay(250).duration(250)}>
-				<Section
-					title="Settlement breakdown"
-					description="Deterministic math for the projected settlement."
-				>
+			{/* Distribution breakdown */}
+			<Animated.View entering={FadeInUp.delay(90).duration(250)}>
+				<Section title="Distribution">
 					<Card variant="success">
-						<DetailRow
-							label="Revenue formula"
-							value={`${DEMO_YIELD_QQ}qq × ${LBS_PER_QQ} lb/qq × $${PRICE_PER_LB.toFixed(2)}`}
-							valueTone="secondary"
-						/>
-						<DetailRow
-							label="Revenue"
-							value={formatUsd(revenueCents)}
-						/>
-						<DetailRow label="Cost" value={formatUsd(costCents)} />
-						<DetailRow
-							label="Profit"
-							value={formatUsd(profitCents)}
-						/>
-
-						{/* Visual separator */}
-						<View
-							style={{
-								height: 1,
-								backgroundColor: theme.colors.border.subtle,
-								marginVertical: theme.spacing.xs,
-							}}
-						/>
-
 						<DetailRow
 							label={`Farmer (${farmerShareBps / 100}%)`}
 							value={formatUsd(farmerShareCents)}
@@ -213,16 +130,89 @@ export default function SettlementPreviewScreen() {
 							label={`Partner (${partnerShareBps / 100}%)`}
 							value={formatUsd(partnerShareCents)}
 						/>
+						<View
+							style={{
+								height: 1,
+								backgroundColor: theme.colors.border.subtle,
+								marginVertical: theme.spacing.xs,
+							}}
+						/>
+						<DetailRow
+							label="Total distributable"
+							value={formatUsd(profitCents)}
+						/>
 					</Card>
 				</Section>
 			</Animated.View>
 
+			{/* Yield economics — collapsed for detail-seekers */}
+			<Animated.View entering={FadeInUp.delay(100).duration(250)}>
+				<CollapsibleSection
+					title="Yield economics"
+					subtitle="Harvest output, market price, and cost breakdown"
+				>
+					<Card variant="muted">
+						<DetailRow
+							label="Harvest yield"
+							value={`${DEMO_YIELD_QQ} qq (${totalLbs.toFixed(0)} lb)`}
+						/>
+						<DetailRow
+							label="Market price"
+							value={`$${PRICE_PER_LB.toFixed(2)}/lb`}
+						/>
+						<DetailRow
+							label="Gross revenue"
+							value={formatUsd(revenueCents)}
+						/>
+						<DetailRow
+							label="Operating cost"
+							value={formatUsd(costCents)}
+						/>
+						<View
+							style={{
+								height: 1,
+								backgroundColor: theme.colors.border.subtle,
+								marginVertical: theme.spacing.xs,
+							}}
+						/>
+						<DetailRow
+							label="Formula"
+							value={`${DEMO_YIELD_QQ}qq × ${LBS_PER_QQ} × $${PRICE_PER_LB.toFixed(2)}`}
+							valueTone="secondary"
+						/>
+					</Card>
+				</CollapsibleSection>
+			</Animated.View>
+
+			{/* Partnership reference — collapsed */}
+			<Animated.View entering={FadeInUp.delay(110).duration(250)}>
+				<CollapsibleSection title="Partnership reference">
+					<Card variant="muted">
+						<DetailRow label="Lot" value={partnership.lotCode} />
+						<DetailRow
+							label="Farmer"
+							value={ellipsify(partnership.farmerWallet)}
+							mono
+							valueTone="secondary"
+						/>
+						{partnership.partnershipPda ? (
+							<DetailRow
+								label="PDA"
+								value={ellipsify(partnership.partnershipPda)}
+								mono
+								valueTone="secondary"
+							/>
+						) : null}
+					</Card>
+				</CollapsibleSection>
+			</Animated.View>
+
 			{/* Disclaimer */}
-			<Animated.View entering={FadeInUp.delay(75).duration(200)}>
+			<Animated.View entering={FadeInUp.delay(120).duration(200)}>
 				<Banner
 					tone="warning"
-					title="Projected settlement only"
-					description="This statement uses demo values of 6qq yield, $3.50/lb price, and $1,490 operating cost. Actual settlement will be recorded on-chain after harvest completion."
+					title="Demo projection"
+					description="Uses sample values (6qq yield, $3.50/lb, $1,490 cost). Actual settlement will be recorded on-chain after harvest."
 				/>
 			</Animated.View>
 		</Screen>

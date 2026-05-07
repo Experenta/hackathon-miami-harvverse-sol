@@ -151,6 +151,12 @@ function buildGenerateDeploy(reason) {
       "localnet",
       "--send",
     ]);
+    run("node", [
+      "packages/solana-client/scripts/harvverse-mock-usdc.mjs",
+      "--cluster",
+      "localnet",
+      "--send",
+    ]);
   } catch (error) {
     console.error(`[localnet] ${error.message}`);
   } finally {

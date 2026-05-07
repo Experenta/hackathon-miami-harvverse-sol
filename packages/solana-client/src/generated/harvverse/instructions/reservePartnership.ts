@@ -10,10 +10,16 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressEncoder,
+  getArrayDecoder,
+  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU64Decoder,
+  getU64Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -33,7 +39,10 @@ import {
 import {
   findCreatePartnerProfileUserRolePda,
   findPartnerProfilePda,
+  findPartnershipEscrowPda,
   findPartnershipPda,
+  findPaymentConfigPda,
+  findVaultAuthorityPda,
 } from "../pdas";
 import { HARVVERSE_PROGRAM_ADDRESS } from "../programs";
 import {
@@ -59,6 +68,16 @@ export type ReservePartnershipInstruction<
   TAccountPartnerProfile extends string | AccountMeta<string> = string,
   TAccountLot extends string | AccountMeta<string> = string,
   TAccountPartnership extends string | AccountMeta<string> = string,
+  TAccountPaymentConfig extends string | AccountMeta<string> = string,
+  TAccountMockUsdcMint extends string | AccountMeta<string> = string,
+  TAccountPartnerMockUsdcAta extends string | AccountMeta<string> = string,
+  TAccountPartnershipEscrow extends string | AccountMeta<string> = string,
+  TAccountVaultAuthority extends string | AccountMeta<string> = string,
+  TAccountVaultTokenAccount extends string | AccountMeta<string> = string,
+  TAccountAssociatedTokenProgram extends string | AccountMeta<string> =
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  TAccountTokenProgram extends string | AccountMeta<string> =
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -80,6 +99,30 @@ export type ReservePartnershipInstruction<
       TAccountPartnership extends string
         ? WritableAccount<TAccountPartnership>
         : TAccountPartnership,
+      TAccountPaymentConfig extends string
+        ? ReadonlyAccount<TAccountPaymentConfig>
+        : TAccountPaymentConfig,
+      TAccountMockUsdcMint extends string
+        ? ReadonlyAccount<TAccountMockUsdcMint>
+        : TAccountMockUsdcMint,
+      TAccountPartnerMockUsdcAta extends string
+        ? WritableAccount<TAccountPartnerMockUsdcAta>
+        : TAccountPartnerMockUsdcAta,
+      TAccountPartnershipEscrow extends string
+        ? WritableAccount<TAccountPartnershipEscrow>
+        : TAccountPartnershipEscrow,
+      TAccountVaultAuthority extends string
+        ? ReadonlyAccount<TAccountVaultAuthority>
+        : TAccountVaultAuthority,
+      TAccountVaultTokenAccount extends string
+        ? WritableAccount<TAccountVaultTokenAccount>
+        : TAccountVaultTokenAccount,
+      TAccountAssociatedTokenProgram extends string
+        ? ReadonlyAccount<TAccountAssociatedTokenProgram>
+        : TAccountAssociatedTokenProgram,
+      TAccountTokenProgram extends string
+        ? ReadonlyAccount<TAccountTokenProgram>
+        : TAccountTokenProgram,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -90,10 +133,14 @@ export type ReservePartnershipInstruction<
 export type ReservePartnershipInstructionData = {
   discriminator: ReadonlyUint8Array;
   termsHash: ReadonlyUint8Array;
+  ticketUsdcCents: bigint;
+  releaseAmounts: Array<bigint>;
 };
 
 export type ReservePartnershipInstructionDataArgs = {
   termsHash: ReadonlyUint8Array;
+  ticketUsdcCents: number | bigint;
+  releaseAmounts: Array<number | bigint>;
 };
 
 export function getReservePartnershipInstructionDataEncoder(): FixedSizeEncoder<ReservePartnershipInstructionDataArgs> {
@@ -101,6 +148,8 @@ export function getReservePartnershipInstructionDataEncoder(): FixedSizeEncoder<
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["termsHash", fixEncoderSize(getBytesEncoder(), 32)],
+      ["ticketUsdcCents", getU64Encoder()],
+      ["releaseAmounts", getArrayEncoder(getU64Encoder(), { size: 6 })],
     ]),
     (value) => ({ ...value, discriminator: RESERVE_PARTNERSHIP_DISCRIMINATOR }),
   );
@@ -110,6 +159,8 @@ export function getReservePartnershipInstructionDataDecoder(): FixedSizeDecoder<
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["termsHash", fixDecoderSize(getBytesDecoder(), 32)],
+    ["ticketUsdcCents", getU64Decoder()],
+    ["releaseAmounts", getArrayDecoder(getU64Decoder(), { size: 6 })],
   ]);
 }
 
@@ -129,6 +180,14 @@ export type ReservePartnershipAsyncInput<
   TAccountPartnerProfile extends string = string,
   TAccountLot extends string = string,
   TAccountPartnership extends string = string,
+  TAccountPaymentConfig extends string = string,
+  TAccountMockUsdcMint extends string = string,
+  TAccountPartnerMockUsdcAta extends string = string,
+  TAccountPartnershipEscrow extends string = string,
+  TAccountVaultAuthority extends string = string,
+  TAccountVaultTokenAccount extends string = string,
+  TAccountAssociatedTokenProgram extends string = string,
+  TAccountTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   partner: TransactionSigner<TAccountPartner>;
@@ -136,8 +195,18 @@ export type ReservePartnershipAsyncInput<
   partnerProfile?: Address<TAccountPartnerProfile>;
   lot: Address<TAccountLot>;
   partnership?: Address<TAccountPartnership>;
+  paymentConfig?: Address<TAccountPaymentConfig>;
+  mockUsdcMint: Address<TAccountMockUsdcMint>;
+  partnerMockUsdcAta?: Address<TAccountPartnerMockUsdcAta>;
+  partnershipEscrow?: Address<TAccountPartnershipEscrow>;
+  vaultAuthority?: Address<TAccountVaultAuthority>;
+  vaultTokenAccount?: Address<TAccountVaultTokenAccount>;
+  associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
+  tokenProgram?: Address<TAccountTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
   termsHash: ReservePartnershipInstructionDataArgs["termsHash"];
+  ticketUsdcCents: ReservePartnershipInstructionDataArgs["ticketUsdcCents"];
+  releaseAmounts: ReservePartnershipInstructionDataArgs["releaseAmounts"];
 };
 
 export async function getReservePartnershipInstructionAsync<
@@ -146,6 +215,14 @@ export async function getReservePartnershipInstructionAsync<
   TAccountPartnerProfile extends string,
   TAccountLot extends string,
   TAccountPartnership extends string,
+  TAccountPaymentConfig extends string,
+  TAccountMockUsdcMint extends string,
+  TAccountPartnerMockUsdcAta extends string,
+  TAccountPartnershipEscrow extends string,
+  TAccountVaultAuthority extends string,
+  TAccountVaultTokenAccount extends string,
+  TAccountAssociatedTokenProgram extends string,
+  TAccountTokenProgram extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof HARVVERSE_PROGRAM_ADDRESS,
 >(
@@ -155,6 +232,14 @@ export async function getReservePartnershipInstructionAsync<
     TAccountPartnerProfile,
     TAccountLot,
     TAccountPartnership,
+    TAccountPaymentConfig,
+    TAccountMockUsdcMint,
+    TAccountPartnerMockUsdcAta,
+    TAccountPartnershipEscrow,
+    TAccountVaultAuthority,
+    TAccountVaultTokenAccount,
+    TAccountAssociatedTokenProgram,
+    TAccountTokenProgram,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -166,6 +251,14 @@ export async function getReservePartnershipInstructionAsync<
     TAccountPartnerProfile,
     TAccountLot,
     TAccountPartnership,
+    TAccountPaymentConfig,
+    TAccountMockUsdcMint,
+    TAccountPartnerMockUsdcAta,
+    TAccountPartnershipEscrow,
+    TAccountVaultAuthority,
+    TAccountVaultTokenAccount,
+    TAccountAssociatedTokenProgram,
+    TAccountTokenProgram,
     TAccountSystemProgram
   >
 > {
@@ -179,6 +272,26 @@ export async function getReservePartnershipInstructionAsync<
     partnerProfile: { value: input.partnerProfile ?? null, isWritable: false },
     lot: { value: input.lot ?? null, isWritable: true },
     partnership: { value: input.partnership ?? null, isWritable: true },
+    paymentConfig: { value: input.paymentConfig ?? null, isWritable: false },
+    mockUsdcMint: { value: input.mockUsdcMint ?? null, isWritable: false },
+    partnerMockUsdcAta: {
+      value: input.partnerMockUsdcAta ?? null,
+      isWritable: true,
+    },
+    partnershipEscrow: {
+      value: input.partnershipEscrow ?? null,
+      isWritable: true,
+    },
+    vaultAuthority: { value: input.vaultAuthority ?? null, isWritable: false },
+    vaultTokenAccount: {
+      value: input.vaultTokenAccount ?? null,
+      isWritable: true,
+    },
+    associatedTokenProgram: {
+      value: input.associatedTokenProgram ?? null,
+      isWritable: false,
+    },
+    tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -206,6 +319,63 @@ export async function getReservePartnershipInstructionAsync<
       partner: expectAddress(accounts.partner.value),
     });
   }
+  if (!accounts.paymentConfig.value) {
+    accounts.paymentConfig.value = await findPaymentConfigPda();
+  }
+  if (!accounts.partnerMockUsdcAta.value) {
+    accounts.partnerMockUsdcAta.value = await getProgramDerivedAddress({
+      programAddress:
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
+      seeds: [
+        getAddressEncoder().encode(expectAddress(accounts.partner.value)),
+        getBytesEncoder().encode(
+          new Uint8Array([
+            6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235,
+            121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140, 245, 133,
+            126, 255, 0, 169,
+          ]),
+        ),
+        getAddressEncoder().encode(expectAddress(accounts.mockUsdcMint.value)),
+      ],
+    });
+  }
+  if (!accounts.partnershipEscrow.value) {
+    accounts.partnershipEscrow.value = await findPartnershipEscrowPda({
+      partnership: expectAddress(accounts.partnership.value),
+    });
+  }
+  if (!accounts.vaultAuthority.value) {
+    accounts.vaultAuthority.value = await findVaultAuthorityPda({
+      partnership: expectAddress(accounts.partnership.value),
+    });
+  }
+  if (!accounts.vaultTokenAccount.value) {
+    accounts.vaultTokenAccount.value = await getProgramDerivedAddress({
+      programAddress:
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
+      seeds: [
+        getAddressEncoder().encode(
+          expectAddress(accounts.vaultAuthority.value),
+        ),
+        getBytesEncoder().encode(
+          new Uint8Array([
+            6, 221, 246, 225, 215, 101, 161, 147, 217, 203, 225, 70, 206, 235,
+            121, 172, 28, 180, 133, 237, 95, 91, 55, 145, 58, 140, 245, 133,
+            126, 255, 0, 169,
+          ]),
+        ),
+        getAddressEncoder().encode(expectAddress(accounts.mockUsdcMint.value)),
+      ],
+    });
+  }
+  if (!accounts.associatedTokenProgram.value) {
+    accounts.associatedTokenProgram.value =
+      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
+  }
+  if (!accounts.tokenProgram.value) {
+    accounts.tokenProgram.value =
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -219,6 +389,14 @@ export async function getReservePartnershipInstructionAsync<
       getAccountMeta(accounts.partnerProfile),
       getAccountMeta(accounts.lot),
       getAccountMeta(accounts.partnership),
+      getAccountMeta(accounts.paymentConfig),
+      getAccountMeta(accounts.mockUsdcMint),
+      getAccountMeta(accounts.partnerMockUsdcAta),
+      getAccountMeta(accounts.partnershipEscrow),
+      getAccountMeta(accounts.vaultAuthority),
+      getAccountMeta(accounts.vaultTokenAccount),
+      getAccountMeta(accounts.associatedTokenProgram),
+      getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
     data: getReservePartnershipInstructionDataEncoder().encode(
@@ -232,6 +410,14 @@ export async function getReservePartnershipInstructionAsync<
     TAccountPartnerProfile,
     TAccountLot,
     TAccountPartnership,
+    TAccountPaymentConfig,
+    TAccountMockUsdcMint,
+    TAccountPartnerMockUsdcAta,
+    TAccountPartnershipEscrow,
+    TAccountVaultAuthority,
+    TAccountVaultTokenAccount,
+    TAccountAssociatedTokenProgram,
+    TAccountTokenProgram,
     TAccountSystemProgram
   >);
 }
@@ -242,6 +428,14 @@ export type ReservePartnershipInput<
   TAccountPartnerProfile extends string = string,
   TAccountLot extends string = string,
   TAccountPartnership extends string = string,
+  TAccountPaymentConfig extends string = string,
+  TAccountMockUsdcMint extends string = string,
+  TAccountPartnerMockUsdcAta extends string = string,
+  TAccountPartnershipEscrow extends string = string,
+  TAccountVaultAuthority extends string = string,
+  TAccountVaultTokenAccount extends string = string,
+  TAccountAssociatedTokenProgram extends string = string,
+  TAccountTokenProgram extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   partner: TransactionSigner<TAccountPartner>;
@@ -249,8 +443,18 @@ export type ReservePartnershipInput<
   partnerProfile: Address<TAccountPartnerProfile>;
   lot: Address<TAccountLot>;
   partnership: Address<TAccountPartnership>;
+  paymentConfig: Address<TAccountPaymentConfig>;
+  mockUsdcMint: Address<TAccountMockUsdcMint>;
+  partnerMockUsdcAta: Address<TAccountPartnerMockUsdcAta>;
+  partnershipEscrow: Address<TAccountPartnershipEscrow>;
+  vaultAuthority: Address<TAccountVaultAuthority>;
+  vaultTokenAccount: Address<TAccountVaultTokenAccount>;
+  associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
+  tokenProgram?: Address<TAccountTokenProgram>;
   systemProgram?: Address<TAccountSystemProgram>;
   termsHash: ReservePartnershipInstructionDataArgs["termsHash"];
+  ticketUsdcCents: ReservePartnershipInstructionDataArgs["ticketUsdcCents"];
+  releaseAmounts: ReservePartnershipInstructionDataArgs["releaseAmounts"];
 };
 
 export function getReservePartnershipInstruction<
@@ -259,6 +463,14 @@ export function getReservePartnershipInstruction<
   TAccountPartnerProfile extends string,
   TAccountLot extends string,
   TAccountPartnership extends string,
+  TAccountPaymentConfig extends string,
+  TAccountMockUsdcMint extends string,
+  TAccountPartnerMockUsdcAta extends string,
+  TAccountPartnershipEscrow extends string,
+  TAccountVaultAuthority extends string,
+  TAccountVaultTokenAccount extends string,
+  TAccountAssociatedTokenProgram extends string,
+  TAccountTokenProgram extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof HARVVERSE_PROGRAM_ADDRESS,
 >(
@@ -268,6 +480,14 @@ export function getReservePartnershipInstruction<
     TAccountPartnerProfile,
     TAccountLot,
     TAccountPartnership,
+    TAccountPaymentConfig,
+    TAccountMockUsdcMint,
+    TAccountPartnerMockUsdcAta,
+    TAccountPartnershipEscrow,
+    TAccountVaultAuthority,
+    TAccountVaultTokenAccount,
+    TAccountAssociatedTokenProgram,
+    TAccountTokenProgram,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -278,6 +498,14 @@ export function getReservePartnershipInstruction<
   TAccountPartnerProfile,
   TAccountLot,
   TAccountPartnership,
+  TAccountPaymentConfig,
+  TAccountMockUsdcMint,
+  TAccountPartnerMockUsdcAta,
+  TAccountPartnershipEscrow,
+  TAccountVaultAuthority,
+  TAccountVaultTokenAccount,
+  TAccountAssociatedTokenProgram,
+  TAccountTokenProgram,
   TAccountSystemProgram
 > {
   // Program address.
@@ -290,6 +518,26 @@ export function getReservePartnershipInstruction<
     partnerProfile: { value: input.partnerProfile ?? null, isWritable: false },
     lot: { value: input.lot ?? null, isWritable: true },
     partnership: { value: input.partnership ?? null, isWritable: true },
+    paymentConfig: { value: input.paymentConfig ?? null, isWritable: false },
+    mockUsdcMint: { value: input.mockUsdcMint ?? null, isWritable: false },
+    partnerMockUsdcAta: {
+      value: input.partnerMockUsdcAta ?? null,
+      isWritable: true,
+    },
+    partnershipEscrow: {
+      value: input.partnershipEscrow ?? null,
+      isWritable: true,
+    },
+    vaultAuthority: { value: input.vaultAuthority ?? null, isWritable: false },
+    vaultTokenAccount: {
+      value: input.vaultTokenAccount ?? null,
+      isWritable: true,
+    },
+    associatedTokenProgram: {
+      value: input.associatedTokenProgram ?? null,
+      isWritable: false,
+    },
+    tokenProgram: { value: input.tokenProgram ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -301,6 +549,14 @@ export function getReservePartnershipInstruction<
   const args = { ...input };
 
   // Resolve default values.
+  if (!accounts.associatedTokenProgram.value) {
+    accounts.associatedTokenProgram.value =
+      "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">;
+  }
+  if (!accounts.tokenProgram.value) {
+    accounts.tokenProgram.value =
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -314,6 +570,14 @@ export function getReservePartnershipInstruction<
       getAccountMeta(accounts.partnerProfile),
       getAccountMeta(accounts.lot),
       getAccountMeta(accounts.partnership),
+      getAccountMeta(accounts.paymentConfig),
+      getAccountMeta(accounts.mockUsdcMint),
+      getAccountMeta(accounts.partnerMockUsdcAta),
+      getAccountMeta(accounts.partnershipEscrow),
+      getAccountMeta(accounts.vaultAuthority),
+      getAccountMeta(accounts.vaultTokenAccount),
+      getAccountMeta(accounts.associatedTokenProgram),
+      getAccountMeta(accounts.tokenProgram),
       getAccountMeta(accounts.systemProgram),
     ],
     data: getReservePartnershipInstructionDataEncoder().encode(
@@ -327,6 +591,14 @@ export function getReservePartnershipInstruction<
     TAccountPartnerProfile,
     TAccountLot,
     TAccountPartnership,
+    TAccountPaymentConfig,
+    TAccountMockUsdcMint,
+    TAccountPartnerMockUsdcAta,
+    TAccountPartnershipEscrow,
+    TAccountVaultAuthority,
+    TAccountVaultTokenAccount,
+    TAccountAssociatedTokenProgram,
+    TAccountTokenProgram,
     TAccountSystemProgram
   >);
 }
@@ -342,7 +614,15 @@ export type ParsedReservePartnershipInstruction<
     partnerProfile: TAccountMetas[2];
     lot: TAccountMetas[3];
     partnership: TAccountMetas[4];
-    systemProgram: TAccountMetas[5];
+    paymentConfig: TAccountMetas[5];
+    mockUsdcMint: TAccountMetas[6];
+    partnerMockUsdcAta: TAccountMetas[7];
+    partnershipEscrow: TAccountMetas[8];
+    vaultAuthority: TAccountMetas[9];
+    vaultTokenAccount: TAccountMetas[10];
+    associatedTokenProgram: TAccountMetas[11];
+    tokenProgram: TAccountMetas[12];
+    systemProgram: TAccountMetas[13];
   };
   data: ReservePartnershipInstructionData;
 };
@@ -355,7 +635,7 @@ export function parseReservePartnershipInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedReservePartnershipInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 14) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -373,6 +653,14 @@ export function parseReservePartnershipInstruction<
       partnerProfile: getNextAccount(),
       lot: getNextAccount(),
       partnership: getNextAccount(),
+      paymentConfig: getNextAccount(),
+      mockUsdcMint: getNextAccount(),
+      partnerMockUsdcAta: getNextAccount(),
+      partnershipEscrow: getNextAccount(),
+      vaultAuthority: getNextAccount(),
+      vaultTokenAccount: getNextAccount(),
+      associatedTokenProgram: getNextAccount(),
+      tokenProgram: getNextAccount(),
       systemProgram: getNextAccount(),
     },
     data: getReservePartnershipInstructionDataDecoder().decode(

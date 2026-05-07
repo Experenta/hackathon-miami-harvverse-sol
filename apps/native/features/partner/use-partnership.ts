@@ -20,3 +20,21 @@ export function usePartnerships() {
     isLoading: partnerships === undefined,
   };
 }
+
+/**
+ * Hook that queries partnerships for the connected farmer wallet.
+ */
+export function useFarmerPartnerships() {
+  const { account } = useMobileWallet();
+  const wallet = account?.address?.toString() ?? "";
+
+  const partnerships = useQuery(
+    api.partnerships.listByFarmer,
+    wallet ? { wallet } : "skip",
+  );
+
+  return {
+    partnerships: partnerships ?? [],
+    isLoading: partnerships === undefined,
+  };
+}

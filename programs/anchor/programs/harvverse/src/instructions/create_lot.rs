@@ -41,7 +41,10 @@ pub fn handler(ctx: Context<CreateLot>, input: CreateLotInput) -> Result<()> {
         input.farmer_share_bps + input.partner_share_bps == 10000,
         HarvverseError::InvalidShareSplit
     );
-    require!(input.ticket_usdc_cents > 0, HarvverseError::InvalidShareSplit);
+    require!(
+        input.ticket_usdc_cents > 0,
+        HarvverseError::InvalidShareSplit
+    );
 
     let lot = &mut ctx.accounts.lot;
     lot.farmer = ctx.accounts.farmer.key();

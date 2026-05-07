@@ -36,18 +36,57 @@ export const HARVVERSE_ERROR__PARTNERSHIP_ALREADY_EXISTS = 0x1778; // 6008
 export const HARVVERSE_ERROR__CONFIG_ALREADY_INITIALIZED = 0x1779; // 6009
 /** InvalidSettlementSigner: Settlement must be signed by farmer or authority */
 export const HARVVERSE_ERROR__INVALID_SETTLEMENT_SIGNER = 0x177a; // 6010
+/** InvalidPaymentConfig: Invalid payment configuration */
+export const HARVVERSE_ERROR__INVALID_PAYMENT_CONFIG = 0x177b; // 6011
+/** InvalidMockUsdcMint: Invalid mockUSDC mint */
+export const HARVVERSE_ERROR__INVALID_MOCK_USDC_MINT = 0x177c; // 6012
+/** InvalidFaucetAmount: Invalid mockUSDC faucet amount */
+export const HARVVERSE_ERROR__INVALID_FAUCET_AMOUNT = 0x177d; // 6013
+/** InvalidTicketAmount: Invalid ticket amount */
+export const HARVVERSE_ERROR__INVALID_TICKET_AMOUNT = 0x177e; // 6014
+/** InvalidReleaseSchedule: Invalid release schedule */
+export const HARVVERSE_ERROR__INVALID_RELEASE_SCHEDULE = 0x177f; // 6015
+/** InvalidTokenAccount: Invalid token account */
+export const HARVVERSE_ERROR__INVALID_TOKEN_ACCOUNT = 0x1780; // 6016
+/** MathOverflow: Arithmetic overflow */
+export const HARVVERSE_ERROR__MATH_OVERFLOW = 0x1781; // 6017
+/** InvalidReleaseSigner: Release must be signed by farmer or authority */
+export const HARVVERSE_ERROR__INVALID_RELEASE_SIGNER = 0x1782; // 6018
+/** ReleaseAlreadyClaimed: Release has already been claimed */
+export const HARVVERSE_ERROR__RELEASE_ALREADY_CLAIMED = 0x1783; // 6019
+/** InsufficientVaultBalance: Vault balance is too low for this release */
+export const HARVVERSE_ERROR__INSUFFICIENT_VAULT_BALANCE = 0x1784; // 6020
+/** InvalidMilestoneIndex: Invalid milestone index */
+export const HARVVERSE_ERROR__INVALID_MILESTONE_INDEX = 0x1785; // 6021
+/** InvalidMilestoneSigner: Milestone must be signed by farmer or authority */
+export const HARVVERSE_ERROR__INVALID_MILESTONE_SIGNER = 0x1786; // 6022
+/** InvalidMilestoneProof: Milestone proof account does not match the requested release */
+export const HARVVERSE_ERROR__INVALID_MILESTONE_PROOF = 0x1787; // 6023
 
 export type HarvverseError =
   | typeof HARVVERSE_ERROR__CONFIG_ALREADY_INITIALIZED
   | typeof HARVVERSE_ERROR__EMPTY_HASH
   | typeof HARVVERSE_ERROR__FARMER_PROFILE_MISSING
+  | typeof HARVVERSE_ERROR__INSUFFICIENT_VAULT_BALANCE
   | typeof HARVVERSE_ERROR__INVALID_AUTHORITY
+  | typeof HARVVERSE_ERROR__INVALID_FAUCET_AMOUNT
   | typeof HARVVERSE_ERROR__INVALID_LOT_STATUS
+  | typeof HARVVERSE_ERROR__INVALID_MILESTONE_INDEX
+  | typeof HARVVERSE_ERROR__INVALID_MILESTONE_PROOF
+  | typeof HARVVERSE_ERROR__INVALID_MILESTONE_SIGNER
+  | typeof HARVVERSE_ERROR__INVALID_MOCK_USDC_MINT
+  | typeof HARVVERSE_ERROR__INVALID_PAYMENT_CONFIG
+  | typeof HARVVERSE_ERROR__INVALID_RELEASE_SCHEDULE
+  | typeof HARVVERSE_ERROR__INVALID_RELEASE_SIGNER
   | typeof HARVVERSE_ERROR__INVALID_ROLE
   | typeof HARVVERSE_ERROR__INVALID_SETTLEMENT_SIGNER
   | typeof HARVVERSE_ERROR__INVALID_SHARE_SPLIT
+  | typeof HARVVERSE_ERROR__INVALID_TICKET_AMOUNT
+  | typeof HARVVERSE_ERROR__INVALID_TOKEN_ACCOUNT
+  | typeof HARVVERSE_ERROR__MATH_OVERFLOW
   | typeof HARVVERSE_ERROR__PARTNER_PROFILE_MISSING
   | typeof HARVVERSE_ERROR__PARTNERSHIP_ALREADY_EXISTS
+  | typeof HARVVERSE_ERROR__RELEASE_ALREADY_CLAIMED
   | typeof HARVVERSE_ERROR__ROLE_ALREADY_REGISTERED;
 
 let harvverseErrorMessages: Record<HarvverseError, string> | undefined;
@@ -56,13 +95,26 @@ if (process.env.NODE_ENV !== "production") {
     [HARVVERSE_ERROR__CONFIG_ALREADY_INITIALIZED]: `Program config already initialized`,
     [HARVVERSE_ERROR__EMPTY_HASH]: `Hash field cannot be all zeros`,
     [HARVVERSE_ERROR__FARMER_PROFILE_MISSING]: `Farmer profile required for this operation`,
+    [HARVVERSE_ERROR__INSUFFICIENT_VAULT_BALANCE]: `Vault balance is too low for this release`,
     [HARVVERSE_ERROR__INVALID_AUTHORITY]: `Invalid authority signer`,
+    [HARVVERSE_ERROR__INVALID_FAUCET_AMOUNT]: `Invalid mockUSDC faucet amount`,
     [HARVVERSE_ERROR__INVALID_LOT_STATUS]: `Lot is not in the required status for this operation`,
+    [HARVVERSE_ERROR__INVALID_MILESTONE_INDEX]: `Invalid milestone index`,
+    [HARVVERSE_ERROR__INVALID_MILESTONE_PROOF]: `Milestone proof account does not match the requested release`,
+    [HARVVERSE_ERROR__INVALID_MILESTONE_SIGNER]: `Milestone must be signed by farmer or authority`,
+    [HARVVERSE_ERROR__INVALID_MOCK_USDC_MINT]: `Invalid mockUSDC mint`,
+    [HARVVERSE_ERROR__INVALID_PAYMENT_CONFIG]: `Invalid payment configuration`,
+    [HARVVERSE_ERROR__INVALID_RELEASE_SCHEDULE]: `Invalid release schedule`,
+    [HARVVERSE_ERROR__INVALID_RELEASE_SIGNER]: `Release must be signed by farmer or authority`,
     [HARVVERSE_ERROR__INVALID_ROLE]: `Invalid role for this operation`,
     [HARVVERSE_ERROR__INVALID_SETTLEMENT_SIGNER]: `Settlement must be signed by farmer or authority`,
     [HARVVERSE_ERROR__INVALID_SHARE_SPLIT]: `Farmer and partner share BPS must sum to 10000`,
+    [HARVVERSE_ERROR__INVALID_TICKET_AMOUNT]: `Invalid ticket amount`,
+    [HARVVERSE_ERROR__INVALID_TOKEN_ACCOUNT]: `Invalid token account`,
+    [HARVVERSE_ERROR__MATH_OVERFLOW]: `Arithmetic overflow`,
     [HARVVERSE_ERROR__PARTNER_PROFILE_MISSING]: `Partner profile required for this operation`,
     [HARVVERSE_ERROR__PARTNERSHIP_ALREADY_EXISTS]: `Partnership already exists for this lot and partner`,
+    [HARVVERSE_ERROR__RELEASE_ALREADY_CLAIMED]: `Release has already been claimed`,
     [HARVVERSE_ERROR__ROLE_ALREADY_REGISTERED]: `Role already registered for this wallet`,
   };
 }

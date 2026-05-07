@@ -34,4 +34,43 @@ pub enum HarvverseError {
 
     #[msg("Settlement must be signed by farmer or authority")]
     InvalidSettlementSigner,
+
+    #[msg("Invalid payment configuration")]
+    InvalidPaymentConfig,
+
+    #[msg("Invalid mockUSDC mint")]
+    InvalidMockUsdcMint,
+
+    #[msg("Invalid mockUSDC faucet amount")]
+    InvalidFaucetAmount,
+
+    #[msg("Invalid ticket amount")]
+    InvalidTicketAmount,
+
+    #[msg("Invalid release schedule")]
+    InvalidReleaseSchedule,
+
+    #[msg("Invalid token account")]
+    InvalidTokenAccount,
+
+    #[msg("Arithmetic overflow")]
+    MathOverflow,
+
+    #[msg("Release must be signed by farmer or authority")]
+    InvalidReleaseSigner,
+
+    #[msg("Release has already been claimed")]
+    ReleaseAlreadyClaimed,
+
+    #[msg("Vault balance is too low for this release")]
+    InsufficientVaultBalance,
+
+    #[msg("Invalid milestone index")]
+    InvalidMilestoneIndex,
+
+    #[msg("Milestone must be signed by farmer or authority")]
+    InvalidMilestoneSigner,
+
+    #[msg("Milestone proof account does not match the requested release")]
+    InvalidMilestoneProof,
 }
