@@ -135,6 +135,7 @@ export default defineSchema({
   })
     .index("by_wallet", ["wallet"])
     .index("by_wallet_lot", ["wallet", "lotCode"])
+    .index("by_wallet_role_lot", ["wallet", "role", "lotCode"])
     .index("by_thread", ["threadId"]),
 
   auditEvents: defineTable({

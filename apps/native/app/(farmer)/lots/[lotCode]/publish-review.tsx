@@ -25,6 +25,7 @@ import {
   StatusPill,
   TxStatus,
 } from "@/components/ui";
+import { AiChatPanel } from "@/features/agent/ai-chat-panel";
 import {
   buildPublishInstructions,
   computePublishHashes,
@@ -495,6 +496,17 @@ export default function PublishReviewScreen() {
           )}
         </Section>
       </Animated.View>
+
+      {wallet ? (
+        <Animated.View entering={FadeInUp.delay(120).duration(250)}>
+          <AiChatPanel
+            wallet={wallet}
+            role="farmer"
+            lotCode={lot.lotCode}
+            description="Ask about readiness, hashes, and lot details before signing."
+          />
+        </Animated.View>
+      ) : null}
 
       {/* Publish readiness */}
       <Animated.View entering={FadeInUp.delay(75).duration(250)}>
