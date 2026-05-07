@@ -632,22 +632,6 @@ Submission requirements (from `plans/consensus.md`):
 
 ---
 
-## 👥 Team
-
-> **Harvverse Inc.** — building the on-chain capital layer for specialty coffee.
-
-<!-- TODO: replace with team member rows -->
-
-| Member         | Role       | Background                                 |
-| -------------- | ---------- | ------------------------------------------ |
-| _[ Member 1 ]_ | _[ role ]_ | _[ employer / university · year · major ]_ |
-| _[ Member 2 ]_ | _[ role ]_ | _[ employer / university · year · major ]_ |
-| _[ Member 3 ]_ | _[ role ]_ | _[ employer / university · year · major ]_ |
-
-Agronomic validation: **Jorge Alberto Lanza** — Cup of Excellence Honduras
-2013 World Champion (92.75 pts), 30+ years of coffee production with Finca La
-Huerta.
-
 ---
 
 ## 📄 License
