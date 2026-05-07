@@ -124,6 +124,19 @@ export default defineSchema({
 		.index("by_partner", ["partnerWallet"])
 		.index("by_lot", ["lotCode"]),
 
+	agentThreads: defineTable({
+		wallet: v.string(),
+		role: v.union(v.literal("farmer"), v.literal("partner")),
+		agentName: v.string(),
+		threadId: v.string(),
+		lotCode: v.optional(v.string()),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_wallet", ["wallet"])
+		.index("by_wallet_lot", ["wallet", "lotCode"])
+		.index("by_thread", ["threadId"]),
+
 	auditEvents: defineTable({
 		actorWallet: v.optional(v.string()),
 		kind: v.string(),

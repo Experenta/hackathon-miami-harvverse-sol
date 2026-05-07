@@ -56,6 +56,7 @@ import {
   computeReserveData,
   type ReserveFlowResult,
 } from "../lib/harvverse/reserve-flow";
+import { AiChatPanel } from "./ai-chat-panel";
 
 type RoleOption = "farmer" | "partner";
 type VerificationStatus =
@@ -1918,6 +1919,13 @@ export function PublishReviewScreen() {
             >
               {isPending ? "Waiting for wallet..." : "Sign and publish lot"}
             </Button>
+            {walletAddress && lotCode && (
+              <AiChatPanel
+                lotCode={lotCode}
+                wallet={walletAddress}
+                role="farmer"
+              />
+            )}
           </div>
         </div>
       </AppShell>
