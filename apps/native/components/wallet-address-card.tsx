@@ -1,143 +1,144 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import Clipboard from "@react-native-clipboard/clipboard";
 import { useCallback, useEffect, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { Text, TouchableOpacity, View, type ViewStyle } from "react-native";
+import { useTheme } from "@/theme";
 
 interface WalletAddressCardProps {
-  address: string;
-  label?: string;
-  style?: ViewStyle;
+	address: string;
+	label?: string;
+	style?: ViewStyle;
 }
 
 export function WalletAddressCard({
-  address,
-  label = "Wallet address",
-  style,
+	address,
+	label = "Wallet address",
+	style,
 }: WalletAddressCardProps) {
-  const [copied, setCopied] = useState(false);
+	const { theme } = useTheme();
+	const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    if (!copied) return;
+	useEffect(() => {
+		if (!copied) return;
 
-    const timeout = setTimeout(() => setCopied(false), 1600);
-    return () => clearTimeout(timeout);
-  }, [copied]);
+		const timeout = setTimeout(() => setCopied(false), 1600);
+		return () => clearTimeout(timeout);
+	}, [copied]);
 
-  const copyAddress = useCallback(() => {
-    Clipboard.setString(address);
-    setCopied(true);
-  }, [address]);
+	const copyAddress = useCallback(() => {
+		Clipboard.setString(address);
+		setCopied(true);
+	}, [address]);
 
-  return (
-    <View style={[styles.card, style]}>
-      <View style={styles.header}>
-        <View style={styles.titleGroup}>
-          <Text style={styles.label}>{label}</Text>
-          <Text style={styles.helper}>Use this public key for seeding</Text>
-        </View>
-        <TouchableOpacity
-          accessibilityLabel={`Copy ${label}`}
-          accessibilityRole="button"
-          onPress={copyAddress}
-          style={[styles.copyButton, copied && styles.copyButtonCopied]}
-        >
-          <MaterialIcons
-            color={copied ? "#166534" : "#374151"}
-            name={copied ? "check" : "content-copy"}
-            size={17}
-          />
-          <Text style={[styles.copyText, copied && styles.copyTextCopied]}>
-            {copied ? "Copied" : "Copy"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+	const copyPalette = copied
+		? theme.colors.feedback.success
+		: {
+				background: theme.colors.surface.subtle,
+				border: theme.colors.border.default,
+				foreground: theme.colors.text.secondary,
+				accent: theme.colors.text.secondary,
+			};
 
-      <View style={styles.addressBox}>
-        <Text selectable style={styles.address}>
-          {address}
-        </Text>
-      </View>
-    </View>
-  );
+	return (
+		<View
+			style={[
+				{
+					backgroundColor: theme.colors.surface.default,
+					borderColor: theme.colors.border.default,
+					borderRadius: theme.radius.sm,
+					borderWidth: theme.borderWidth.thin,
+					gap: theme.spacing.xs + 2,
+					padding: 14,
+					...theme.elevation.card,
+				},
+				style,
+			]}
+		>
+			<View
+				style={{
+					alignItems: "flex-start",
+					flexDirection: "row",
+					gap: theme.spacing.sm,
+					justifyContent: "space-between",
+				}}
+			>
+				<View style={{ flex: 1, gap: 2 }}>
+					<Text
+						style={[
+							theme.typography.labelSm,
+							{
+								color: theme.colors.text.primary,
+								textTransform: "uppercase",
+							},
+						]}
+					>
+						{label}
+					</Text>
+					<Text
+						style={[
+							theme.typography.caption,
+							{ color: theme.colors.text.muted, lineHeight: 16 },
+						]}
+					>
+						Use this public key for seeding
+					</Text>
+				</View>
+				<TouchableOpacity
+					accessibilityLabel={`Copy ${label}`}
+					accessibilityRole="button"
+					onPress={copyAddress}
+					style={{
+						alignItems: "center",
+						backgroundColor: copyPalette.background,
+						borderColor: copyPalette.border,
+						borderRadius: theme.radius.sm,
+						borderWidth: theme.borderWidth.thin,
+						flexDirection: "row",
+						gap: 6,
+						minHeight: 34,
+						paddingHorizontal: theme.spacing.xs + 2,
+					}}
+				>
+					<MaterialIcons
+						color={copyPalette.accent}
+						name={copied ? "check" : "content-copy"}
+						size={17}
+					/>
+					<Text
+						style={[
+							theme.typography.labelMd,
+							{ color: copyPalette.foreground },
+						]}
+					>
+						{copied ? "Copied" : "Copy"}
+					</Text>
+				</TouchableOpacity>
+			</View>
+
+			<View
+				style={{
+					backgroundColor: theme.colors.surface.subtle,
+					borderColor: theme.colors.border.default,
+					borderRadius: theme.radius.sm,
+					borderWidth: theme.borderWidth.thin,
+					paddingHorizontal: theme.spacing.xs + 2,
+					paddingVertical: theme.spacing.xs + 1,
+				}}
+			>
+				<Text
+					selectable
+					style={[
+						theme.typography.mono,
+						{
+							color: theme.colors.text.primary,
+							flexShrink: 1,
+							width: "100%",
+						},
+					]}
+				>
+					{address}
+				</Text>
+			</View>
+		</View>
+	);
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#e5e7eb",
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 10,
-    padding: 14,
-    shadowColor: "#111827",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  header: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  titleGroup: {
-    flex: 1,
-    gap: 2,
-  },
-  label: {
-    color: "#111827",
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-  },
-  helper: {
-    color: "#6b7280",
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  copyButton: {
-    alignItems: "center",
-    backgroundColor: "#f3f4f6",
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 34,
-    paddingHorizontal: 10,
-  },
-  copyButtonCopied: {
-    backgroundColor: "#dcfce7",
-    borderColor: "#86efac",
-  },
-  copyText: {
-    color: "#374151",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  copyTextCopied: {
-    color: "#166534",
-  },
-  addressBox: {
-    backgroundColor: "#f9fafb",
-    borderColor: "#e5e7eb",
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
-  },
-  address: {
-    color: "#111827",
-    flexShrink: 1,
-    fontFamily: "monospace",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-});

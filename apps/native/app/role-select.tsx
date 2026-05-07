@@ -1,263 +1,221 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import { useMutation } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
 import { buildRegisterRoleTx, RoleKind } from "@repo/solana-client";
-import { useTransaction } from "@/hooks/use-transaction";
-import { useRole } from "@/features/role/use-role";
 import { DisconnectWalletButton } from "@/components/disconnect-wallet-button";
 import { WalletAddressCard } from "@/components/wallet-address-card";
+import {
+	ActionBar,
+	Badge,
+	Banner,
+	Button,
+	ListItemCard,
+	Screen,
+	ScreenHeader,
+	Section,
+} from "@/components/ui";
+import { useRole } from "@/features/role/use-role";
+import { useTransaction } from "@/hooks/use-transaction";
+import { useTheme } from "@/theme";
 
 type RoleOption = "farmer" | "partner";
 
 const ROLE_OPTIONS: {
-  value: RoleOption;
-  label: string;
-  description: string;
-  emoji: string;
+	value: RoleOption;
+	label: string;
+	description: string;
+	emoji: string;
 }[] = [
-  {
-    value: "farmer",
-    label: "Farmer",
-    description:
-      "Create and publish coffee lots, track agronomic plans, and connect with investment partners.",
-    emoji: "🌱",
-  },
-  {
-    value: "partner",
-    label: "Partner",
-    description:
-      "Browse verified coffee lots, reserve partnerships, and view settlement receipts on-chain.",
-    emoji: "🤝",
-  },
+	{
+		value: "farmer",
+		label: "Farmer",
+		description:
+			"Create and publish coffee lots, track agronomic plans, and connect with investment partners.",
+		emoji: "\uD83C\uDF31",
+	},
+	{
+		value: "partner",
+		label: "Partner",
+		description:
+			"Browse verified coffee lots, reserve partnerships, and view settlement receipts on-chain.",
+		emoji: "\uD83E\uDD1D",
+	},
 ];
 
 export default function RoleSelectScreen() {
-  const router = useRouter();
-  const { account } = useMobileWallet();
-  const { signAndSendWithSigner, isPending, error, reset } = useTransaction();
-  const { refetch } = useRole();
-  const recordRoleRegistration = useMutation(api.users.recordRoleRegistration);
+	const router = useRouter();
+	const { account } = useMobileWallet();
+	const { signAndSendWithSigner, isPending, error, reset } = useTransaction();
+	const { refetch } = useRole();
+	const recordRoleRegistration = useMutation(api.users.recordRoleRegistration);
+	const { theme } = useTheme();
 
-  const [selectedRole, setSelectedRole] = useState<RoleOption | null>(null);
-  const [txSignature, setTxSignature] = useState<string | null>(null);
+	const [selectedRole, setSelectedRole] = useState<RoleOption | null>(null);
+	const [txSignature, setTxSignature] = useState<string | null>(null);
 
-  async function handleRegister() {
-    if (!selectedRole || !account) return;
+	async function handleRegister() {
+		if (!selectedRole || !account) return;
 
-    reset();
-    setTxSignature(null);
+		reset();
+		setTxSignature(null);
 
-    try {
-      const roleKind =
-        selectedRole === "farmer" ? RoleKind.Farmer : RoleKind.Partner;
+		try {
+			const roleKind =
+				selectedRole === "farmer" ? RoleKind.Farmer : RoleKind.Partner;
 
-      let rolePda = `role-pda-${account.address}`;
-      const { signature } = await signAndSendWithSigner(
-        async (walletSigner) => {
-          const instruction = await buildRegisterRoleTx({
-            wallet: walletSigner,
-            role: roleKind,
-          });
-          rolePda = instruction.accounts?.[1]?.address?.toString() ?? rolePda;
+			let rolePda = `role-pda-${account.address}`;
+			const { signature } = await signAndSendWithSigner(
+				async (walletSigner) => {
+					const instruction = await buildRegisterRoleTx({
+						wallet: walletSigner,
+						role: roleKind,
+					});
+					rolePda = instruction.accounts?.[1]?.address?.toString() ?? rolePda;
 
-          return [instruction];
-        },
-      );
-      setTxSignature(signature);
+					return [instruction];
+				},
+			);
+			setTxSignature(signature);
 
-      await recordRoleRegistration({
-        wallet: account.address.toString(),
-        role: selectedRole,
-        rolePda,
-        roleTx: signature,
-      });
+			await recordRoleRegistration({
+				wallet: account.address.toString(),
+				role: selectedRole,
+				rolePda,
+				roleTx: signature,
+			});
 
-      // Refetch role and navigate
-      await refetch();
-      router.replace(
-        (selectedRole === "farmer"
-          ? "/(farmer)/home"
-          : "/(partner)/home") as Href,
-      );
-    } catch {
-      // error is already set in useTransaction
-    }
-  }
+			await refetch();
+			router.replace(
+				(selectedRole === "farmer"
+					? "/(farmer)/home"
+					: "/(partner)/home") as Href,
+			);
+		} catch {
+			// error is already set in useTransaction
+		}
+	}
 
-  return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        style={styles.scrollView}
-      >
-        <Text style={styles.title}>Choose your role</Text>
-        <Text style={styles.subtitle}>
-          Your role is registered on-chain and cannot be changed.
-        </Text>
+	return (
+		<Screen scrollable>
+			<ScreenHeader
+				eyebrow="On-chain identity"
+				title="Choose your role"
+				subtitle="Your role is written on-chain and the current flow treats it as permanent."
+				trailing={<Badge label="Root screen" tone="info" />}
+			/>
 
-        {account && (
-          <WalletAddressCard
-            address={account.address.toString()}
-            label="Connected wallet address"
-          />
-        )}
+			<Banner
+				title="One registration, one route"
+				description="This step preserves the existing Solana transaction and role-routing logic. Only the visual layer changed."
+			/>
 
-        <DisconnectWalletButton />
+			{account ? (
+				<Section
+					title="Connected wallet"
+					description="Review the active address before you sign the role registration transaction."
+					aside={<DisconnectWalletButton />}
+				>
+					<WalletAddressCard
+						address={account.address.toString()}
+						label="Connected wallet address"
+					/>
+				</Section>
+			) : null}
 
-        <View style={styles.options}>
-          {ROLE_OPTIONS.map((option) => (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.optionCard,
-                selectedRole === option.value && styles.optionCardSelected,
-              ]}
-              onPress={() => setSelectedRole(option.value)}
-              disabled={isPending}
-            >
-              <Text style={styles.optionEmoji}>{option.emoji}</Text>
-              <Text style={styles.optionLabel}>{option.label}</Text>
-              <Text style={styles.optionDescription}>{option.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+			<Section
+				title="Available roles"
+				description="Pick the role that matches how this wallet should participate in Harvverse."
+			>
+				<View style={{ gap: theme.spacing.sm }}>
+					{ROLE_OPTIONS.map((option) => {
+						const isSelected = selectedRole === option.value;
+						const tone = option.value === "farmer" ? "farmer" : "partner";
 
-        {txSignature && (
-          <View style={styles.pendingBox}>
-            <ActivityIndicator size="small" color="#16a34a" />
-            <Text style={styles.pendingText} numberOfLines={1}>
-              Confirming… {txSignature.slice(0, 16)}…
-            </Text>
-          </View>
-        )}
+						return (
+							<ListItemCard
+								key={option.value}
+								onPress={() => setSelectedRole(option.value)}
+								disabled={isPending}
+								accessibilityState={{
+									disabled: isPending,
+									selected: isSelected,
+								}}
+								tone={tone}
+								eyebrow={option.value}
+								title={`${option.emoji} ${option.label}`}
+								subtitle={option.description}
+								status={{
+									label: isSelected ? "Selected" : "Available",
+									tone,
+								}}
+								highlight={{
+									label: "Role behavior",
+									value:
+										option.value === "farmer"
+											? "Origin + publish"
+											: "Source + reserve",
+								}}
+								badges={[
+									{
+										label: isSelected ? "Current choice" : "Tap to select",
+										tone: isSelected ? "success" : "neutral",
+									},
+								]}
+								contentStyle={{
+									borderColor: isSelected
+										? theme.colors.border.accent
+										: undefined,
+									borderWidth: isSelected
+										? theme.borderWidth.strong
+										: undefined,
+								}}
+							/>
+						);
+					})}
+				</View>
+			</Section>
 
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error.message}</Text>
-          </View>
-        )}
+			{txSignature ? (
+				<Banner
+					tone="success"
+					title="Transaction in flight"
+					accessory={
+						<ActivityIndicator
+							size="small"
+							color={theme.colors.feedback.success.accent}
+						/>
+					}
+					description={`Confirming ${txSignature.slice(0, 16)}...`}
+				/>
+			) : null}
 
-        <TouchableOpacity
-          style={[
-            styles.registerButton,
-            (!selectedRole || isPending) && styles.registerButtonDisabled,
-          ]}
-          onPress={handleRegister}
-          disabled={!selectedRole || isPending}
-        >
-          {isPending ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.registerButtonText}>
-              Sign and register role
-            </Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
-  );
+			{error ? (
+				<Banner
+					tone="error"
+					title="Role registration failed"
+					description={error.message}
+				/>
+			) : null}
+
+			<ActionBar>
+				<Button
+					title="Sign and register role"
+					onPress={handleRegister}
+					disabled={!selectedRole || isPending}
+					loading={isPending}
+				/>
+				<Text
+					style={[
+						theme.typography.caption,
+						{ color: theme.colors.text.muted, textAlign: "center" },
+					]}
+				>
+					Navigation and role logic are unchanged. This action still signs the same transaction path.
+				</Text>
+			</ActionBar>
+		</Screen>
+	);
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 32,
-    gap: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#111827",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  options: {
-    gap: 12,
-    marginTop: 8,
-  },
-  optionCard: {
-    backgroundColor: "#ffffff",
-    borderWidth: 2,
-    borderColor: "#e5e7eb",
-    borderRadius: 12,
-    padding: 16,
-    gap: 4,
-  },
-  optionCardSelected: {
-    borderColor: "#16a34a",
-    backgroundColor: "#f0fdf4",
-  },
-  optionEmoji: {
-    fontSize: 28,
-  },
-  optionLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: "#6b7280",
-    lineHeight: 20,
-  },
-  pendingBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#f0fdf4",
-    borderRadius: 8,
-    padding: 12,
-  },
-  pendingText: {
-    fontSize: 13,
-    color: "#15803d",
-    flex: 1,
-  },
-  errorBox: {
-    backgroundColor: "#fef2f2",
-    borderRadius: 8,
-    padding: 12,
-  },
-  errorText: {
-    fontSize: 13,
-    color: "#dc2626",
-  },
-  registerButton: {
-    backgroundColor: "#16a34a",
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  registerButtonDisabled: {
-    backgroundColor: "#d1d5db",
-  },
-  registerButtonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});

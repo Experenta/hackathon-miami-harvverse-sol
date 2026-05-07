@@ -1,30 +1,48 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TextInput,
-	TouchableOpacity,
-	View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, View } from "react-native";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import type { Address } from "@solana/kit";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
 import {
 	buildCreatePartnerProfileTx,
-	computeManifestHashHex,
 	computeManifestHash,
+	computeManifestHashHex,
+	fetchPartnerProfileByWallet,
 	findPartnerProfilePda,
 } from "@repo/solana-client";
+import {
+	ActionBar,
+	Badge,
+	Banner,
+	Button,
+	Card,
+	DetailRow,
+	FormField,
+	ListItemCard,
+	MetricCard,
+	Screen,
+	ScreenHeader,
+	Section,
+	StatusPill,
+} from "@/components/ui";
+import { useNetwork } from "@/features/network/use-network";
 import { useTransaction } from "@/hooks/use-transaction";
+import { useTheme } from "@/theme";
 import { ellipsify } from "@/utils/ellipsify";
 
+function isAlreadyInUseError(message: string): boolean {
+	const normalized = message.toLowerCase();
+	return (
+		normalized.includes("allocate account already in use") ||
+		normalized.includes("already in use")
+	);
+}
+
 export default function PartnerProfileScreen() {
-	const { account } = useMobileWallet();
+	const { account, client } = useMobileWallet();
+	const { selectedNetwork } = useNetwork();
+	const { theme } = useTheme();
 	const wallet = account?.address?.toString() ?? "";
 	const {
 		signAndSendWithSigner,
@@ -43,16 +61,43 @@ export default function PartnerProfileScreen() {
 	const [organization, setOrganization] = useState(
 		existingProfile?.organization ?? "",
 	);
+	const [onChainProfilePda, setOnChainProfilePda] = useState<string | null>(
+		null,
+	);
+	const [profileNotice, setProfileNotice] = useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [successTx, setSuccessTx] = useState<string | null>(null);
 
-	// Sync form with existing profile when it loads
 	useEffect(() => {
 		if (existingProfile) {
 			setDisplayName(existingProfile.displayName);
 			setOrganization(existingProfile.organization ?? "");
 		}
 	}, [existingProfile]);
+
+	useEffect(() => {
+		if (!wallet) {
+			setOnChainProfilePda(null);
+			return;
+		}
+
+		let isActive = true;
+
+		fetchPartnerProfileByWallet(client.rpc, wallet as Address)
+			.then((profile) => {
+				if (!isActive) return;
+				setOnChainProfilePda(profile?.address.toString() ?? null);
+			})
+			.catch((err) => {
+				if (!isActive) return;
+				console.error("Failed to fetch partner profile:", err);
+				setOnChainProfilePda(null);
+			});
+
+		return () => {
+			isActive = false;
+		};
+	}, [client.rpc, wallet, selectedNetwork.id]);
 
 	const handleSubmit = useCallback(async () => {
 		if (!wallet || !displayName.trim()) {
@@ -61,13 +106,15 @@ export default function PartnerProfileScreen() {
 		}
 
 		setIsSubmitting(true);
+		setProfileNotice(null);
 		setSuccessTx(null);
 
 		try {
-			// Compute metadata hash from profile fields
+			const trimmedDisplayName = displayName.trim();
+			const trimmedOrganization = organization.trim();
 			const profilePayload = {
-				displayName: displayName.trim(),
-				organization: organization.trim(),
+				displayName: trimmedDisplayName,
+				organization: trimmedOrganization,
 				wallet,
 			};
 
@@ -75,7 +122,7 @@ export default function PartnerProfileScreen() {
 				profilePayload as Record<string, unknown>,
 			);
 			const displayNameHash = await computeManifestHash({
-				displayName: displayName.trim(),
+				displayName: trimmedDisplayName,
 			} as Record<string, unknown>);
 			const metadataUriHash = await computeManifestHash(
 				profilePayload as Record<string, unknown>,
@@ -83,27 +130,59 @@ export default function PartnerProfileScreen() {
 			const [partnerProfilePda] = await findPartnerProfilePda({
 				partner: wallet as Address,
 			});
+			const partnerProfilePdaString = partnerProfilePda.toString();
 
-			// Build and sign the on-chain transaction
-			const result = await signAndSendWithSigner(async (signer) => {
-				const ix = await buildCreatePartnerProfileTx({
-					partner: signer,
-					displayNameHash,
-					metadataUriHash,
+			const syncExistingProfile = async (message: string) => {
+				await upsertProfile({
+					wallet,
+					partnerProfilePda: partnerProfilePdaString,
+					displayName: trimmedDisplayName,
+					organization: trimmedOrganization || undefined,
+					metadataHash: metadataHashHex,
 				});
-				return [ix];
-			});
 
-			// Save profile to Convex
-			await upsertProfile({
-				wallet,
-				partnerProfilePda: partnerProfilePda.toString(),
-				displayName: displayName.trim(),
-				organization: organization.trim() || undefined,
-				metadataHash: metadataHashHex,
-			});
+				setOnChainProfilePda(partnerProfilePdaString);
+				setProfileNotice(message);
+			};
 
-			setSuccessTx(result.signature);
+			if (onChainProfilePda === partnerProfilePdaString) {
+				await syncExistingProfile(
+					"This wallet already has a partner profile. We refreshed the saved profile instead of sending a duplicate create transaction.",
+				);
+				return;
+			}
+
+			try {
+				const result = await signAndSendWithSigner(async (signer) => {
+					const ix = await buildCreatePartnerProfileTx({
+						partner: signer,
+						displayNameHash,
+						metadataUriHash,
+					});
+					return [ix];
+				});
+
+				await upsertProfile({
+					wallet,
+					partnerProfilePda: partnerProfilePdaString,
+					displayName: trimmedDisplayName,
+					organization: trimmedOrganization || undefined,
+					metadataHash: metadataHashHex,
+				});
+
+				setOnChainProfilePda(partnerProfilePdaString);
+				setSuccessTx(result.signature);
+			} catch (err) {
+				const message =
+					err instanceof Error ? err.message : "Profile creation failed";
+				if (!isAlreadyInUseError(message)) {
+					throw err;
+				}
+
+				await syncExistingProfile(
+					"This wallet already had a partner profile on-chain. We reused it and refreshed the saved profile details.",
+				);
+			}
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : "Profile creation failed";
@@ -115,147 +194,214 @@ export default function PartnerProfileScreen() {
 		wallet,
 		displayName,
 		organization,
+		onChainProfilePda,
 		signAndSendWithSigner,
 		upsertProfile,
 	]);
 
 	const busy = isPending || isSubmitting;
+	const profilePda = existingProfile?.partnerProfilePda ?? onChainProfilePda;
+	const profileLive = Boolean(profilePda);
+	const identityTitle =
+		displayName.trim() || existingProfile?.displayName || "Partner identity";
 
 	return (
-		<SafeAreaView style={styles.screen}>
-			<ScrollView
-				contentContainerStyle={styles.container}
-				keyboardShouldPersistTaps="handled"
+		<Screen scrollable>
+			<ScreenHeader
+				eyebrow="Partner identity"
+				title="Profile and verification"
+				subtitle="Establish a verifiable investor identity so farmers can review the counterparty behind an active yield agreement."
+				trailing={<Badge label="Android native" tone="partner" />}
+			/>
+
+			<Section
+				description="The profile transaction, PDA derivation, and Convex mirror stay unchanged."
+				aside={
+					<StatusPill
+						label={profileLive ? "Identity live" : "Setup pending"}
+						tone={profileLive ? "success" : "partner"}
+					/>
+				}
 			>
-				<Text style={styles.title}>Partner Profile</Text>
-				<Text style={styles.subtitle}>
-					Create your on-chain profile so Farmers can verify your
-					identity.
-				</Text>
+				<ListItemCard
+					disabled
+					tone="partner"
+					eyebrow="Verification record"
+					title={identityTitle}
+					subtitle={
+						organization.trim() ||
+						"Counterparty identity used across reserve and settlement flows."
+					}
+					status={{
+						label: profileLive ? "On-chain profile" : "Draft identity",
+						tone: profileLive ? "success" : "partner",
+					}}
+					highlight={{
+						label: "Wallet",
+						value: wallet ? ellipsify(wallet) : "Connect wallet",
+					}}
+					badges={[
+						{
+							label: organization.trim() || "Organization pending",
+							tone: "partner",
+						},
+						{ label: "Yield partner", tone: "info" },
+					]}
+					details={[
+						{
+							label: "Profile PDA",
+							value: profilePda
+								? ellipsify(profilePda)
+								: "Pending creation",
+						},
+						{
+							label: "Role",
+							value: "Partner",
+						},
+					]}
+				/>
+			</Section>
 
-				{existingProfile?.partnerProfilePda && (
-					<View style={styles.infoCard}>
-						<Text style={styles.label}>Profile PDA</Text>
-						<Text style={styles.value}>
-							{ellipsify(existingProfile.partnerProfilePda)}
-						</Text>
-					</View>
+			<Section
+				title="Verification posture"
+				description="The screen frames the partner as an active counterparty identity, not a flat form."
+			>
+				<View
+					style={{
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: theme.spacing.sm,
+					}}
+				>
+					<MetricCard
+						tone="partner"
+						eyebrow="Identity"
+						label="Display name"
+						value={displayName.trim() || "Pending"}
+						helper="Primary public label"
+						style={{ minWidth: 160 }}
+					/>
+					<MetricCard
+						tone="info"
+						eyebrow="Counterparty"
+						label="Organization"
+						value={organization.trim() || "Independent"}
+						helper="Optional institutional context"
+						style={{ minWidth: 160 }}
+					/>
+				</View>
+				{profileLive ? (
+					<Banner
+						tone="success"
+						eyebrow="On-chain proof"
+						title="Partner identity is already anchored"
+						description="If the PDA already exists, this screen refreshes the saved profile record and avoids a duplicate create transaction."
+					/>
+				) : (
+					<Banner
+						tone="accent"
+						eyebrow="First issuance"
+						title="Create the first verified partner profile"
+						description="This will derive the PartnerProfile PDA, sign the instruction, and persist the mirrored metadata record."
+					/>
 				)}
+			</Section>
 
-				<View style={styles.field}>
-					<Text style={styles.fieldLabel}>Display Name *</Text>
-					<TextInput
-						style={styles.input}
+			<Section
+				title="Identity fields"
+				description="The payload and validation remain exactly the same."
+				aside={<Badge label="Metadata payload" tone="info" />}
+			>
+				<Card variant="accent" style={{ gap: theme.spacing.md }}>
+					<FormField
+						label="Display Name"
+						required
 						value={displayName}
 						onChangeText={setDisplayName}
 						placeholder="Your name or alias"
-						placeholderTextColor="#9ca3af"
-						editable={!busy}
+						disabled={busy}
 					/>
-				</View>
-
-				<View style={styles.field}>
-					<Text style={styles.fieldLabel}>Organization</Text>
-					<TextInput
-						style={styles.input}
+					<FormField
+						label="Organization"
 						value={organization}
 						onChangeText={setOrganization}
 						placeholder="e.g. Harvest Capital LLC"
-						placeholderTextColor="#9ca3af"
-						editable={!busy}
+						disabled={busy}
 					/>
-				</View>
+				</Card>
+			</Section>
 
-				<TouchableOpacity
-					accessibilityLabel="Sign and create profile"
-					accessibilityRole="button"
-					disabled={busy || !displayName.trim()}
+			<Section
+				title="Reference details"
+				description="Supporting identifiers stay visible for verification."
+			>
+				<Card variant="muted">
+					<DetailRow
+						label="Wallet"
+						value={wallet ? ellipsify(wallet) : "Not connected"}
+						mono
+						valueTone="secondary"
+					/>
+					<DetailRow
+						label="Profile PDA"
+						value={
+							profilePda
+								? ellipsify(profilePda)
+								: "Pending creation"
+						}
+						mono
+						valueTone="secondary"
+					/>
+					<DetailRow
+						label="Metadata status"
+						value={
+							existingProfile
+								? "Stored in Convex"
+								: profileLive
+									? "On-chain profile found"
+									: "Awaiting first write"
+						}
+						valueTone="secondary"
+					/>
+				</Card>
+			</Section>
+
+			{txError ? (
+				<Banner
+					tone="error"
+					title="Profile transaction failed"
+					description={txError.message}
+				/>
+			) : null}
+
+			{profileNotice ? (
+				<Banner
+					tone="success"
+					title="Profile already available"
+					description={profileNotice}
+				/>
+			) : null}
+
+			{successTx ? (
+				<Banner
+					tone="success"
+					title="Profile recorded on-chain"
+					description={`Transaction ${ellipsify(successTx)}`}
+					eyebrow="Verification complete"
+				/>
+			) : null}
+
+			<ActionBar>
+				<Button
+					title={
+						profileLive ? "Refresh saved profile" : "Sign and create profile"
+					}
+					variant="accent"
 					onPress={handleSubmit}
-					style={[
-						styles.submitButton,
-						(busy || !displayName.trim()) &&
-							styles.submitButtonDisabled,
-					]}
-				>
-					{busy ? (
-						<ActivityIndicator color="#ffffff" size="small" />
-					) : (
-						<Text style={styles.submitButtonText}>
-							{existingProfile
-								? "Update profile on-chain"
-								: "Sign and create profile"}
-						</Text>
-					)}
-				</TouchableOpacity>
-
-				{txError && (
-					<Text style={styles.errorText}>{txError.message}</Text>
-				)}
-
-				{successTx && (
-					<View style={styles.successCard}>
-						<Text style={styles.successTitle}>
-							Profile created on-chain!
-						</Text>
-						<Text style={styles.successTx}>
-							Tx: {ellipsify(successTx)}
-						</Text>
-					</View>
-				)}
-			</ScrollView>
-		</SafeAreaView>
+					disabled={busy || !displayName.trim()}
+					loading={busy}
+				/>
+			</ActionBar>
+		</Screen>
 	);
 }
-
-const styles = StyleSheet.create({
-	screen: { flex: 1, backgroundColor: "#f9fafb" },
-	container: { padding: 16, gap: 14, paddingBottom: 40 },
-	title: { fontSize: 22, fontWeight: "bold", color: "#111827" },
-	subtitle: { fontSize: 14, color: "#6b7280", marginBottom: 4 },
-	infoCard: {
-		backgroundColor: "#ffffff",
-		borderRadius: 8,
-		padding: 12,
-		borderWidth: 1,
-		borderColor: "#e5e7eb",
-	},
-	label: { fontSize: 12, color: "#6b7280", marginBottom: 2 },
-	value: {
-		fontSize: 13,
-		fontWeight: "500",
-		color: "#111827",
-		fontFamily: "monospace",
-	},
-	field: { gap: 4 },
-	fieldLabel: { fontSize: 13, fontWeight: "600", color: "#374151" },
-	input: {
-		backgroundColor: "#ffffff",
-		borderRadius: 8,
-		borderWidth: 1,
-		borderColor: "#d1d5db",
-		paddingHorizontal: 12,
-		paddingVertical: 10,
-		fontSize: 15,
-		color: "#111827",
-	},
-	submitButton: {
-		backgroundColor: "#7c3aed",
-		borderRadius: 8,
-		paddingVertical: 14,
-		alignItems: "center",
-		marginTop: 8,
-	},
-	submitButtonDisabled: { opacity: 0.6 },
-	submitButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "600" },
-	errorText: { color: "#dc2626", fontSize: 13, marginTop: 4 },
-	successCard: {
-		backgroundColor: "#ecfdf5",
-		borderRadius: 8,
-		padding: 12,
-		borderWidth: 1,
-		borderColor: "#a7f3d0",
-		gap: 4,
-	},
-	successTitle: { fontSize: 14, fontWeight: "600", color: "#065f46" },
-	successTx: { fontSize: 12, color: "#047857", fontFamily: "monospace" },
-});

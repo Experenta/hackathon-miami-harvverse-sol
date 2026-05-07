@@ -1,26 +1,40 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { NetworkFeatureGetVersion } from "./network-feature-get-version";
 import { NetworkFeatureGetGenesisHash } from "./network-feature-get-genesis-hash";
 import { NetworkUiSelect } from "./network-ui-select";
 import { useNetwork } from "./use-network";
-import { appStyles } from "@/constants/app-styles";
+import { Card, DetailRow, Section, StatusPill } from "@/components/ui";
+import { useTheme } from "@/theme";
 
 export function NetworkFeatureIndex() {
-  const { selectedNetwork, networks, setSelectedNetwork } = useNetwork();
-  return (
-    <View style={appStyles.stack}>
-      <Text style={appStyles.title}>Network</Text>
-      <NetworkUiSelect
-        networks={networks}
-        selectedNetwork={selectedNetwork}
-        setSelectedNetwork={setSelectedNetwork}
-      />
-      <View style={appStyles.card}>
-        <Text>Connected to {selectedNetwork.label}</Text>
-        <NetworkFeatureGetVersion />
-        <NetworkFeatureGetGenesisHash />
-      </View>
-    </View>
-  );
+	const { selectedNetwork, networks, setSelectedNetwork } = useNetwork();
+	const { theme } = useTheme();
+
+	return (
+		<View style={{ gap: theme.spacing.lg }}>
+			<Section
+				title="Network"
+				description="Cluster selection and RPC diagnostics stay available here."
+				aside={<StatusPill label={selectedNetwork.label} tone="accent" />}
+			>
+				<Card variant="info">
+					<DetailRow
+						label="Current cluster"
+						value={selectedNetwork.label}
+						valueTone="secondary"
+					/>
+				</Card>
+			</Section>
+			<NetworkUiSelect
+				networks={networks}
+				selectedNetwork={selectedNetwork}
+				setSelectedNetwork={setSelectedNetwork}
+			/>
+			<Card variant="muted">
+				<NetworkFeatureGetVersion />
+				<NetworkFeatureGetGenesisHash />
+			</Card>
+		</View>
+	);
 }

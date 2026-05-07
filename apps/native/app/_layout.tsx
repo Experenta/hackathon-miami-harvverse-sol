@@ -2,6 +2,13 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import { AppProviders } from "@/components/app-providers";
+import { useTheme } from "@/theme";
+
+function ThemedStatusBar() {
+	const { resolvedMode } = useTheme();
+
+	return <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />;
+}
 
 export default function RootLayout() {
 	return (
@@ -25,7 +32,7 @@ export default function RootLayout() {
 					options={{ headerShown: false }}
 				/>
 			</Stack>
-			<StatusBar style="auto" />
+			<ThemedStatusBar />
 		</AppProviders>
 	);
 }

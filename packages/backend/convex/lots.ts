@@ -287,3 +287,41 @@ export const updateDraft = mutation({
 		return lot._id;
 	},
 });
+
+/**
+ * Synchronizes the mirrored Convex lot status with the live on-chain state.
+ */
+export const syncStatusFromChain = mutation({
+	args: {
+		lotCode: v.string(),
+		status: v.union(
+			v.literal("draft"),
+			v.literal("published"),
+			v.literal("reserved"),
+			v.literal("in_cycle"),
+			v.literal("settled"),
+			v.literal("cancelled"),
+		),
+	},
+	handler: async (ctx, args) => {
+		const lot = await ctx.db
+			.query("lots")
+			.withIndex("by_lot_code", (q) => q.eq("lotCode", args.lotCode))
+			.unique();
+
+		if (!lot) {
+			throw new Error(`Lot not found: ${args.lotCode}`);
+		}
+
+		if (lot.status === args.status) {
+			return lot._id;
+		}
+
+		await ctx.db.patch(lot._id, {
+			status: args.status,
+			updatedAt: Date.now(),
+		});
+
+		return lot._id;
+	},
+});

@@ -1,30 +1,39 @@
-import { Button, View } from "react-native";
 import React from "react";
+import { View } from "react-native";
 import { SolanaCluster } from "@wallet-ui/react-native-kit";
-import { appStyles } from "@/constants/app-styles";
+import { Button, Card, DetailRow } from "@/components/ui";
+import { useTheme } from "@/theme";
 
 export function NetworkUiSelect({
-  networks,
-  selectedNetwork,
-  setSelectedNetwork,
+	networks,
+	selectedNetwork,
+	setSelectedNetwork,
 }: {
-  networks: SolanaCluster[];
-  selectedNetwork: SolanaCluster;
-  setSelectedNetwork: (network: SolanaCluster) => void;
+	networks: SolanaCluster[];
+	selectedNetwork: SolanaCluster;
+	setSelectedNetwork: (network: SolanaCluster) => void;
 }) {
-  return (
-    <View style={appStyles.stack}>
-      {networks
-        .filter((i) => i.id !== selectedNetwork.id)
-        .map((network) => (
-          <View key={network.id}>
-            <Button
-              disabled={selectedNetwork.id === network.id}
-              onPress={() => setSelectedNetwork(network)}
-              title={`Connect to ${network.label}`}
-            />
-          </View>
-        ))}
-    </View>
-  );
+	const { theme } = useTheme();
+
+	return (
+		<View style={{ gap: theme.spacing.sm }}>
+			{networks
+				.filter((i) => i.id !== selectedNetwork.id)
+				.map((network) => (
+					<Card key={network.id} variant="muted">
+						<DetailRow
+							label="Target cluster"
+							value={network.label}
+							valueTone="secondary"
+						/>
+						<Button
+							disabled={selectedNetwork.id === network.id}
+							onPress={() => setSelectedNetwork(network)}
+							title={`Switch to ${network.label}`}
+							variant="secondary"
+						/>
+					</Card>
+				))}
+		</View>
+	);
 }

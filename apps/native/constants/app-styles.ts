@@ -1,24 +1,28 @@
 import { StyleSheet } from "react-native";
+import type { AppTheme } from "@/theme";
 
-export const appStyles = StyleSheet.create({
-  card: {
-    backgroundColor: "#ffffff",
-    borderColor: "#d1d1d1",
-    borderRadius: 2,
-    borderWidth: 1,
-    elevation: 1,
-    padding: 4,
-  },
-  screen: {
-    flex: 1,
-    gap: 16,
-    paddingHorizontal: 8,
-  },
-  stack: {
-    gap: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-});
+export function createAppStyles(theme: AppTheme) {
+	return StyleSheet.create({
+		card: {
+			backgroundColor: theme.colors.surface.default,
+			borderColor: theme.colors.border.default,
+			borderRadius: theme.radius.md,
+			borderWidth: theme.borderWidth.thin,
+			padding: theme.spacing.md,
+			gap: theme.spacing.sm,
+			...theme.elevation.card,
+		},
+		screen: {
+			flex: 1,
+			gap: theme.spacing.md,
+			paddingHorizontal: theme.spacing.md,
+		},
+		stack: {
+			gap: theme.spacing.xs,
+		},
+		title: {
+			...theme.typography.text1,
+			color: theme.colors.text.primary,
+		},
+	});
+}

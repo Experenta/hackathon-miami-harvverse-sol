@@ -1,27 +1,21 @@
 import { useCallback, useState } from "react";
-import {
-	ActivityIndicator,
-	Alert,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import { useMutation } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
 import { computeManifestHashHex } from "@repo/solana-client";
-import {
-	LotForm,
-	EMPTY_LOT_FORM,
-	type LotFormData,
-} from "@/features/farmer/lot-form";
+import { Button, Screen, ScreenHeader, Section, Banner, ActionBar, StatusPill } from "@/components/ui";
 import {
 	DEMO_AGRONOMIC_PLAN,
 	DEMO_SENSOR_SNAPSHOT,
 } from "@/constants/demo-data";
+import {
+	EMPTY_LOT_FORM,
+	LotForm,
+	type LotFormData,
+} from "@/features/farmer/lot-form";
+import { useTheme } from "@/theme";
 
 export default function CreateLotScreen() {
 	const { account } = useMobileWallet();
@@ -34,6 +28,7 @@ export default function CreateLotScreen() {
 	const [draftSaved, setDraftSaved] = useState(false);
 	const [planAutofilled, setPlanAutofilled] = useState(false);
 	const [sensorAutofilled, setSensorAutofilled] = useState(false);
+	const { theme } = useTheme();
 
 	const wallet = account?.address?.toString() ?? "";
 
@@ -160,151 +155,106 @@ export default function CreateLotScreen() {
 			Alert.alert("Sensor Autofilled", "Demo sensor snapshot saved.");
 		} catch (err) {
 			const message =
-				err instanceof Error
-					? err.message
-					: "Failed to autofill sensor";
+				err instanceof Error ? err.message : "Failed to autofill sensor";
 			Alert.alert("Error", message);
 		}
 	}, [formData.lotCode, addSnapshot]);
 
 	return (
-		<SafeAreaView style={styles.screen}>
-			<View style={styles.header}>
-				<Text style={styles.title}>Create New Lot</Text>
-			</View>
-			<LotForm data={formData} onChange={setFormData} disabled={isSaving}>
-				{/* Save draft button */}
-				<TouchableOpacity
-					accessibilityLabel="Save draft"
-					accessibilityRole="button"
-					disabled={isSaving || draftSaved}
-					onPress={handleSaveDraft}
-					style={[
-						styles.saveButton,
-						(isSaving || draftSaved) && styles.saveButtonDisabled,
-					]}
-				>
-					{isSaving ? (
-						<ActivityIndicator color="#ffffff" size="small" />
-					) : (
-						<Text style={styles.saveButtonText}>
-							{draftSaved ? "✓ Draft Saved" : "Save Draft"}
-						</Text>
-					)}
-				</TouchableOpacity>
+		<Screen scrollable>
+			<ScreenHeader
+				eyebrow="Farmer flow"
+				title="Create new lot"
+				subtitle="Compose the lot draft first, then enrich it with demo plan and sensor data before publish review."
+			/>
 
-				{/* Autofill buttons — shown after draft is saved */}
-				{draftSaved && (
-					<View style={styles.autofillSection}>
-						<Text style={styles.autofillSectionTitle}>
-							Demo Autofill Helpers
-						</Text>
+			{draftSaved ? (
+				<Banner
+					tone="success"
+					title="Draft saved"
+					description="The lot draft is ready for helper autofills or publish review."
+				/>
+			) : (
+				<Banner
+					tone="info"
+					title="Draft first"
+					description="Required fields and share split validation remain unchanged. Save once before running helper actions."
+				/>
+			)}
 
-						<TouchableOpacity
-							accessibilityLabel="Autofill agronomic plan"
-							accessibilityRole="button"
-							disabled={planAutofilled}
-							onPress={handleAutofillPlan}
-							style={[
-								styles.demoButton,
-								planAutofilled && styles.demoButtonDone,
-							]}
+			<LotForm
+				data={formData}
+				onChange={setFormData}
+				disabled={isSaving}
+			>
+				<ActionBar>
+					<Button
+						title={draftSaved ? "Draft Saved" : "Save Draft"}
+						onPress={handleSaveDraft}
+						disabled={isSaving || draftSaved}
+						loading={isSaving}
+					/>
+					<Text
+						style={[
+							theme.typography.caption,
+							{ color: theme.colors.text.muted, textAlign: "center" },
+						]}
+					>
+						The save flow and validations are unchanged. This only updates the visual system.
+					</Text>
+				</ActionBar>
+
+				{draftSaved ? (
+					<Section
+						title="Demo autofill helpers"
+						description="Optional helpers for plan and sensor data after the draft exists."
+					>
+						<Banner
+							tone="accent"
+							title="Digital helper actions"
+							description="These shortcuts keep the existing demo payloads and hashes."
 						>
-							<Text style={styles.demoButtonText}>
-								{planAutofilled
-									? "✓ Plan autofilled"
-									: "🌱 Autofill agronomic plan"}
-							</Text>
-							<Text style={styles.demoHint}>Demo helper</Text>
-						</TouchableOpacity>
-
-						<TouchableOpacity
-							accessibilityLabel="Autofill demo sensor snapshot"
-							accessibilityRole="button"
-							disabled={sensorAutofilled}
-							onPress={handleAutofillSensor}
-							style={[
-								styles.demoButton,
-								sensorAutofilled && styles.demoButtonDone,
-							]}
-						>
-							<Text style={styles.demoButtonText}>
-								{sensorAutofilled
-									? "✓ Sensor autofilled"
-									: "📡 Autofill demo sensor snapshot"}
-							</Text>
-							<Text style={styles.demoHint}>Demo helper</Text>
-						</TouchableOpacity>
-
-						{/* Navigate to publish */}
-						<TouchableOpacity
-							accessibilityLabel="Go to publish review"
-							accessibilityRole="button"
-							onPress={() =>
-								router.push(
-									`/(farmer)/lots/${formData.lotCode.trim()}/publish-review` as Href,
-								)
-							}
-							style={styles.publishNavButton}
-						>
-							<Text style={styles.publishNavButtonText}>
-								Proceed to Publish →
-							</Text>
-						</TouchableOpacity>
-					</View>
-				)}
+							<View style={{ flexDirection: "row", gap: theme.spacing.sm, flexWrap: "wrap" }}>
+								<StatusPill
+									label={planAutofilled ? "Plan ready" : "Plan pending"}
+									tone={planAutofilled ? "success" : "accent"}
+								/>
+								<StatusPill
+									label={sensorAutofilled ? "Sensor ready" : "Sensor pending"}
+									tone={sensorAutofilled ? "success" : "accent"}
+								/>
+							</View>
+						</Banner>
+						<ActionBar variant="subtle">
+							<Button
+								title={planAutofilled ? "Plan Autofilled" : "Autofill Agronomic Plan"}
+								variant="secondary"
+								onPress={handleAutofillPlan}
+								disabled={planAutofilled}
+							/>
+							<Button
+								title={
+									sensorAutofilled
+										? "Sensor Autofilled"
+										: "Autofill Sensor Snapshot"
+								}
+								variant="secondary"
+								onPress={handleAutofillSensor}
+								disabled={sensorAutofilled}
+							/>
+							<Button
+								title="Proceed to Publish"
+								variant="accent"
+								onPress={() =>
+									router.push(
+										`/(farmer)/lots/${formData.lotCode.trim()}/publish-review` as Href,
+									)
+								}
+							/>
+						</ActionBar>
+					</Section>
+				) : null}
 			</LotForm>
-		</SafeAreaView>
+		</Screen>
 	);
 }
-
-const styles = StyleSheet.create({
-	screen: { flex: 1, backgroundColor: "#f9fafb" },
-	header: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-	title: { fontSize: 22, fontWeight: "bold", color: "#111827" },
-	saveButton: {
-		backgroundColor: "#059669",
-		borderRadius: 8,
-		paddingVertical: 14,
-		alignItems: "center",
-		marginTop: 8,
-	},
-	saveButtonDisabled: { opacity: 0.6 },
-	saveButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "600" },
-	autofillSection: {
-		marginTop: 16,
-		gap: 10,
-		borderTopWidth: 1,
-		borderTopColor: "#e5e7eb",
-		paddingTop: 16,
-	},
-	autofillSectionTitle: {
-		fontSize: 15,
-		fontWeight: "600",
-		color: "#374151",
-		marginBottom: 4,
-	},
-	demoButton: {
-		backgroundColor: "#eff6ff",
-		borderRadius: 8,
-		borderWidth: 1,
-		borderColor: "#93c5fd",
-		padding: 12,
-		alignItems: "center",
-		gap: 2,
-	},
-	demoButtonDone: {
-		backgroundColor: "#ecfdf5",
-		borderColor: "#6ee7b7",
-	},
-	demoButtonText: { fontSize: 14, fontWeight: "600", color: "#1e40af" },
-	demoHint: { fontSize: 11, color: "#6b7280" },
-	publishNavButton: {
-		backgroundColor: "#7c3aed",
-		borderRadius: 8,
-		paddingVertical: 14,
-		alignItems: "center",
-		marginTop: 8,
-	},
-	publishNavButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "600" },
-});

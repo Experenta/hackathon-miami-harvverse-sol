@@ -1,21 +1,34 @@
 import { useEffect, useState } from "react";
-import {
-	ActivityIndicator,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import type { Address } from "@solana/kit";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
-import { fetchLotByPda } from "@repo/solana-client";
-import { ellipsify } from "@/utils/ellipsify";
+import { fetchLotByPda, LotStatus } from "@repo/solana-client";
+import {
+	ActionBar,
+	Badge,
+	Banner,
+	Button,
+	Card,
+	DetailRow,
+	ListItemCard,
+	MetricCard,
+	Screen,
+	ScreenHeader,
+	Section,
+	StatusPill,
+} from "@/components/ui";
 import { useNetwork } from "@/features/network/use-network";
+import {
+	formatLotStatusLabel,
+	getReserveBlockedReason,
+	isReservableLotStatus,
+	mapOnChainLotStatusToApp,
+} from "@/features/partner/lot-status";
+import { useTheme } from "@/theme";
+import { ellipsify } from "@/utils/ellipsify";
 
 type VerificationStatus =
 	| "loading"
@@ -28,21 +41,24 @@ export default function PartnerLotDetailScreen() {
 	const { lotCode } = useLocalSearchParams<{ lotCode: string }>();
 	const { client } = useMobileWallet();
 	const { selectedNetwork } = useNetwork();
+	const { theme } = useTheme();
 	const router = useRouter();
 
 	const lot = useQuery(api.lots.getByCode, lotCode ? { lotCode } : "skip");
+	const syncStatusFromChain = useMutation(api.lots.syncStatusFromChain);
 
 	const [verificationStatus, setVerificationStatus] =
 		useState<VerificationStatus>("loading");
 	const [verificationError, setVerificationError] = useState<string | null>(
 		null,
 	);
+	const [liveLotStatus, setLiveLotStatus] = useState<LotStatus | null>(null);
 
-	// Verify on-chain lot PDA
 	useEffect(() => {
 		if (!lot?.lotPda) {
 			if (lot !== undefined) {
 				setVerificationStatus("not_found");
+				setLiveLotStatus(null);
 			}
 			return;
 		}
@@ -57,11 +73,24 @@ export default function PartnerLotDetailScreen() {
 
 				if (!onChainLot || !onChainLot.exists) {
 					setVerificationStatus("not_found");
+					setLiveLotStatus(null);
 					return;
 				}
 
-				// Verify key fields match between Convex and on-chain data
 				const onChainData = onChainLot.data;
+				const nextStatus = onChainData.status;
+				setLiveLotStatus(nextStatus);
+
+				const mirroredStatus = mapOnChainLotStatusToApp(nextStatus);
+				if (lot.status !== mirroredStatus) {
+					void syncStatusFromChain({
+						lotCode: lot.lotCode,
+						status: mirroredStatus,
+					}).catch((err) => {
+						console.error("Failed to sync lot status from chain:", err);
+					});
+				}
+
 				const ticketMatch =
 					Number(onChainData.ticketUsdcCents) === lot.ticketUsdcCents;
 				const farmerShareMatch =
@@ -79,6 +108,7 @@ export default function PartnerLotDetailScreen() {
 				if (!isActive) return;
 				console.error("On-chain verification failed:", err);
 				setVerificationStatus("error");
+				setLiveLotStatus(null);
 				setVerificationError(
 					err instanceof Error ? err.message : "Verification failed",
 				);
@@ -87,258 +117,329 @@ export default function PartnerLotDetailScreen() {
 		return () => {
 			isActive = false;
 		};
-	}, [lot, client.rpc, selectedNetwork.id]);
+	}, [lot, client.rpc, selectedNetwork.id, syncStatusFromChain]);
 
-	// Loading state
 	if (lot === undefined || !lotCode) {
 		return (
-			<SafeAreaView style={styles.screen}>
-				<View style={styles.centered}>
-					<ActivityIndicator size="large" color="#7c3aed" />
-					<Text style={styles.loadingText}>Loading lot…</Text>
-				</View>
-			</SafeAreaView>
+			<Screen
+				contentContainerStyle={{
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<ActivityIndicator
+					color={theme.colors.action.primary.background}
+					size="large"
+				/>
+				<Text
+					style={[
+						theme.typography.bodyMd,
+						{ color: theme.colors.text.secondary },
+					]}
+				>
+					Loading lot...
+				</Text>
+			</Screen>
 		);
 	}
 
 	if (!lot) {
 		return (
-			<SafeAreaView style={styles.screen}>
-				<View style={styles.centered}>
-					<Text style={styles.errorText}>
-						Lot not found: {lotCode}
-					</Text>
-				</View>
-			</SafeAreaView>
+			<Screen
+				contentContainerStyle={{
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<Banner
+					tone="error"
+					title="Lot not found"
+					description={`No lot was found for ${lotCode}.`}
+				/>
+			</Screen>
 		);
 	}
 
 	const ticketDisplay = `$${(lot.ticketUsdcCents / 100).toLocaleString()}`;
+	const verificationMeta = getVerificationMeta(
+		verificationStatus,
+		verificationError,
+	);
+	const liveStatusLabel =
+		liveLotStatus === null
+			? null
+			: formatLotStatusLabel(mapOnChainLotStatusToApp(liveLotStatus));
+	const convexStatusLabel = formatLotStatusLabel(lot.status);
+	const canReserve =
+		verificationStatus === "match" && isReservableLotStatus(liveLotStatus);
+	const reserveBlockedMessage =
+		verificationStatus !== "match"
+			? "On-chain verification must pass before reserving."
+			: getReserveBlockedReason(liveLotStatus);
+	const isStatusOutOfSync =
+		liveLotStatus !== null &&
+		mapOnChainLotStatusToApp(liveLotStatus) !== lot.status;
 
 	return (
-		<SafeAreaView style={styles.screen}>
-			<ScrollView contentContainerStyle={styles.container}>
-				<Text style={styles.title}>{lot.farmName}</Text>
-				<Text style={styles.subtitle}>{lot.lotCode}</Text>
+		<Screen scrollable>
+			<ScreenHeader
+				eyebrow="Verified asset"
+				title={lot.farmName}
+				subtitle={`Lot ${lot.lotCode} is framed as a verifiable agricultural asset before reservation.`}
+				trailing={<Badge label={lot.variety} tone="partner" />}
+			/>
 
-				{/* Lot details */}
-				<View style={styles.card}>
-					<Text style={styles.cardTitle}>Lot Details</Text>
-					<DetailRow label="Variety" value={lot.variety} />
-					<DetailRow
-						label="Location"
-						value={`${lot.region}, ${lot.country}`}
+			<Section
+				description="Current lot detail logic and reserve navigation remain intact."
+				aside={
+					<StatusPill
+						label={verificationMeta.pillLabel}
+						tone={verificationMeta.pillTone}
 					/>
-					<DetailRow
-						label="Coordinates"
-						value={`${lot.latitude}, ${lot.longitude}`}
+				}
+			>
+				<View
+					style={{
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: theme.spacing.sm,
+					}}
+				>
+					<StatusPill label={selectedNetwork.label} tone="accent" />
+					<StatusPill
+						label={convexStatusLabel}
+						tone="info"
 					/>
-					<DetailRow
-						label="Altitude"
-						value={`${lot.altitudeMeters}m`}
+					{liveStatusLabel ? (
+						<StatusPill
+							label={`Live: ${liveStatusLabel}`}
+							tone={
+								isReservableLotStatus(liveLotStatus)
+									? "success"
+									: "warning"
+							}
+						/>
+					) : null}
+				</View>
+			</Section>
+
+			<Section
+				title="Asset snapshot"
+				description="Key commercial terms and geography surface first."
+			>
+				<View
+					style={{
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: theme.spacing.sm,
+					}}
+				>
+					<MetricCard
+						tone="partner"
+						eyebrow="Ticket"
+						label="Opportunity size"
+						value={ticketDisplay}
+						helper={lot.farmName}
+						style={{ minWidth: 160 }}
 					/>
-					<DetailRow
-						label="Area"
-						value={`${lot.areaManzanas} manzanas`}
-					/>
-					<DetailRow label="Ticket" value={ticketDisplay} />
-					<DetailRow
-						label="Farmer Share"
+					<MetricCard
+						tone="success"
+						eyebrow="Farmer"
+						label="Farmer share"
 						value={`${lot.farmerShareBps / 100}%`}
+						helper="Producer allocation"
+						style={{ minWidth: 160 }}
 					/>
-					<DetailRow
-						label="Partner Share"
+					<MetricCard
+						tone="info"
+						eyebrow="Partner"
+						label="Partner share"
 						value={`${lot.partnerShareBps / 100}%`}
+						helper="Investor participation"
+						style={{ minWidth: 160 }}
 					/>
 				</View>
+			</Section>
 
-				{/* On-chain info */}
-				<View style={styles.card}>
-					<Text style={styles.cardTitle}>On-Chain Data</Text>
-					{lot.lotPda && (
-						<DetailRow
-							label="Lot PDA"
-							value={ellipsify(lot.lotPda)}
-							mono
-						/>
-					)}
+			<Section
+				title="Asset identity"
+				description="The lot reads as a trackable asset with human and cryptographic anchors."
+			>
+				<ListItemCard
+					disabled
+					tone="partner"
+					eyebrow={lot.lotCode}
+					title={lot.farmName}
+					subtitle={`${lot.variety} asset from ${lot.region}, ${lot.country}`}
+					status={{
+						label: verificationMeta.cardStatusLabel,
+						tone: verificationMeta.pillTone,
+					}}
+					highlight={{
+						label: "Area",
+						value: `${trimNumber(lot.areaManzanas)} manzanas`,
+					}}
+					badges={[
+						{ label: lot.variety, tone: "partner" },
+						{ label: `${lot.altitudeMeters}m`, tone: "info" },
+					]}
+					details={[
+						{
+							label: "Location",
+							value: `${lot.region}, ${lot.country}`,
+						},
+						{
+							label: "Coordinates",
+							value: `${lot.latitude}, ${lot.longitude}`,
+						},
+					]}
+				/>
+			</Section>
+
+			<Section
+				title="Verification record"
+				description="Supporting data confirms whether the mirrored lot matches its on-chain representation."
+				aside={<Badge label="On-chain check" tone="info" />}
+			>
+				{isStatusOutOfSync ? (
+					<Banner
+						tone="warning"
+						title="Lot state changed on-chain"
+						description={`Convex shows ${convexStatusLabel}, but the live account is ${liveStatusLabel}. Reservation uses the on-chain state.`}
+					/>
+				) : null}
+				<Banner
+					tone={verificationMeta.bannerTone}
+					title={verificationMeta.title}
+					description={verificationMeta.description}
+					eyebrow="Asset verification"
+					accessory={
+						verificationStatus === "loading" ? (
+							<ActivityIndicator size="small" />
+						) : undefined
+					}
+				/>
+				<Card variant={verificationMeta.cardVariant}>
 					<DetailRow
-						label="Farmer Wallet"
+						label="Lot PDA"
+						value={lot.lotPda ? ellipsify(lot.lotPda) : "Not recorded"}
+						mono
+						valueTone="secondary"
+					/>
+					<DetailRow
+						label="Farmer wallet"
 						value={ellipsify(lot.farmerWallet)}
 						mono
+						valueTone="secondary"
 					/>
-				</View>
+					<DetailRow
+						label="Verification"
+						value={verificationMeta.detailValue}
+						valueTone="secondary"
+					/>
+					<DetailRow
+						label="Live status"
+						value={liveStatusLabel ?? "Unknown"}
+						valueTone="secondary"
+					/>
+				</Card>
+			</Section>
 
-				{/* Verification status */}
-				<VerificationBadge
-					status={verificationStatus}
-					error={verificationError}
-				/>
-
-				{/* Reserve button */}
-				<TouchableOpacity
-					accessibilityLabel="Reserve partnership"
-					accessibilityRole="button"
-					disabled={verificationStatus !== "match"}
+			<ActionBar>
+				<Button
+					title="Reserve Partnership"
+					variant="accent"
+					disabled={!canReserve}
 					onPress={() =>
-						router.push(
-							`/(partner)/lots/${lotCode}/reserve` as Href,
-						)
+						router.push(`/(partner)/lots/${lotCode}/reserve` as Href)
 					}
-					style={[
-						styles.reserveButton,
-						verificationStatus !== "match" &&
-							styles.reserveButtonDisabled,
-					]}
-				>
-					<Text style={styles.reserveButtonText}>
-						Reserve Partnership
+				/>
+				{!canReserve && verificationStatus !== "loading" ? (
+					<Text
+						style={[
+							theme.typography.caption,
+							{
+								color: theme.colors.text.muted,
+								textAlign: "center",
+							},
+						]}
+					>
+						{reserveBlockedMessage}
 					</Text>
-				</TouchableOpacity>
-
-				{verificationStatus !== "match" &&
-					verificationStatus !== "loading" && (
-						<Text style={styles.hintText}>
-							On-chain verification must pass before reserving.
-						</Text>
-					)}
-			</ScrollView>
-		</SafeAreaView>
+				) : null}
+			</ActionBar>
+		</Screen>
 	);
 }
 
-function DetailRow({
-	label,
-	value,
-	mono,
-}: {
-	label: string;
-	value: string;
-	mono?: boolean;
-}) {
-	return (
-		<View style={styles.detailRow}>
-			<Text style={styles.detailLabel}>{label}</Text>
-			<Text style={[styles.detailValue, mono && styles.detailValueMono]}>
-				{value}
-			</Text>
-		</View>
-	);
+function getVerificationMeta(
+	status: VerificationStatus,
+	error: string | null,
+) {
+	switch (status) {
+		case "match":
+			return {
+				title: "On-chain data verified",
+				description:
+					"Ticket and revenue split fields match the on-chain asset record.",
+				detailValue: "Match",
+				pillLabel: "Verified",
+				cardStatusLabel: "Asset verified",
+				pillTone: "success" as const,
+				bannerTone: "success" as const,
+				cardVariant: "success" as const,
+			};
+		case "mismatch":
+			return {
+				title: "On-chain data mismatch",
+				description:
+					"At least one mirrored lot field differs from the on-chain asset record.",
+				detailValue: "Mismatch",
+				pillLabel: "Mismatch",
+				cardStatusLabel: "Review required",
+				pillTone: "warning" as const,
+				bannerTone: "warning" as const,
+				cardVariant: "warning" as const,
+			};
+		case "not_found":
+			return {
+				title: "Lot PDA not found on-chain",
+				description:
+					"The app could not locate a live on-chain asset record for this lot PDA.",
+				detailValue: "Not found",
+				pillLabel: "Missing proof",
+				cardStatusLabel: "Proof missing",
+				pillTone: "warning" as const,
+				bannerTone: "warning" as const,
+				cardVariant: "warning" as const,
+			};
+		case "error":
+			return {
+				title: "Verification failed",
+				description: error ?? "The on-chain verification check failed.",
+				detailValue: "Error",
+				pillLabel: "Check failed",
+				cardStatusLabel: "Check failed",
+				pillTone: "error" as const,
+				bannerTone: "error" as const,
+				cardVariant: "default" as const,
+			};
+		case "loading":
+		default:
+			return {
+				title: "Verifying on-chain asset",
+				description:
+					"The lot PDA is being checked against its live on-chain representation.",
+				detailValue: "In progress",
+				pillLabel: "Verifying",
+				cardStatusLabel: "Verification running",
+				pillTone: "info" as const,
+				bannerTone: "info" as const,
+				cardVariant: "info" as const,
+			};
+	}
 }
 
-function VerificationBadge({
-	status,
-	error,
-}: {
-	status: VerificationStatus;
-	error: string | null;
-}) {
-	const config = {
-		loading: {
-			bg: "#f3f4f6",
-			border: "#e5e7eb",
-			text: "Verifying on-chain data…",
-			textColor: "#6b7280",
-			icon: "⏳",
-		},
-		match: {
-			bg: "#ecfdf5",
-			border: "#a7f3d0",
-			text: "On-chain data verified ✓",
-			textColor: "#065f46",
-			icon: "✅",
-		},
-		mismatch: {
-			bg: "#fef2f2",
-			border: "#fecaca",
-			text: "On-chain data mismatch — proceed with caution",
-			textColor: "#991b1b",
-			icon: "⚠️",
-		},
-		not_found: {
-			bg: "#fffbeb",
-			border: "#fcd34d",
-			text: "Lot PDA not found on-chain",
-			textColor: "#92400e",
-			icon: "❓",
-		},
-		error: {
-			bg: "#fef2f2",
-			border: "#fecaca",
-			text: error ?? "Verification failed",
-			textColor: "#991b1b",
-			icon: "❌",
-		},
-	}[status];
-
-	return (
-		<View
-			style={[
-				styles.verificationCard,
-				{ backgroundColor: config.bg, borderColor: config.border },
-			]}
-		>
-			{status === "loading" ? (
-				<ActivityIndicator size="small" color="#6b7280" />
-			) : (
-				<Text style={styles.verificationIcon}>{config.icon}</Text>
-			)}
-			<Text
-				style={[styles.verificationText, { color: config.textColor }]}
-			>
-				{config.text}
-			</Text>
-		</View>
-	);
+function trimNumber(value: number) {
+	return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
-
-const styles = StyleSheet.create({
-	screen: { flex: 1, backgroundColor: "#f9fafb" },
-	container: { padding: 16, gap: 14, paddingBottom: 40 },
-	centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-	loadingText: { marginTop: 8, fontSize: 14, color: "#6b7280" },
-	errorText: { fontSize: 15, color: "#dc2626" },
-	title: { fontSize: 22, fontWeight: "bold", color: "#111827" },
-	subtitle: { fontSize: 14, color: "#6b7280" },
-	card: {
-		backgroundColor: "#ffffff",
-		borderRadius: 8,
-		padding: 14,
-		borderWidth: 1,
-		borderColor: "#e5e7eb",
-		gap: 8,
-	},
-	cardTitle: { fontSize: 15, fontWeight: "600", color: "#111827" },
-	detailRow: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-	},
-	detailLabel: { fontSize: 13, color: "#6b7280" },
-	detailValue: { fontSize: 13, fontWeight: "500", color: "#111827" },
-	detailValueMono: { fontFamily: "monospace", fontSize: 12 },
-	verificationCard: {
-		borderRadius: 8,
-		padding: 14,
-		borderWidth: 1,
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-	},
-	verificationIcon: { fontSize: 16 },
-	verificationText: { fontSize: 13, fontWeight: "500", flex: 1 },
-	reserveButton: {
-		backgroundColor: "#7c3aed",
-		borderRadius: 8,
-		paddingVertical: 14,
-		alignItems: "center",
-		marginTop: 4,
-	},
-	reserveButtonDisabled: { opacity: 0.5 },
-	reserveButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "600" },
-	hintText: {
-		fontSize: 12,
-		color: "#9ca3af",
-		textAlign: "center",
-	},
-});

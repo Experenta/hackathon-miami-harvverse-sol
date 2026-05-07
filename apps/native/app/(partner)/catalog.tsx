@@ -1,126 +1,150 @@
-import {
-	FlatList,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { FlatList, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
+import {
+	Banner,
+	ListItemCard,
+	MetricCard,
+	Screen,
+	ScreenHeader,
+	Section,
+} from "@/components/ui";
 import { useLotCatalog } from "@/features/partner/use-lot-catalog";
+import { useTheme } from "@/theme";
 
 export default function CatalogScreen() {
 	const { lots, isLoading } = useLotCatalog();
 	const router = useRouter();
+	const { theme } = useTheme();
+
+	const totalTicketUsdcCents = lots.reduce(
+		(total, lot) => total + lot.ticketUsdcCents,
+		0,
+	);
+	const averageTicketUsdcCents =
+		lots.length > 0 ? Math.round(totalTicketUsdcCents / lots.length) : 0;
 
 	return (
-		<SafeAreaView style={styles.screen}>
-			<View style={styles.container}>
-				<Text style={styles.title}>Lot Catalog</Text>
-				<Text style={styles.subtitle}>
-					Browse published lots available for partnership.
-				</Text>
+		<Screen contentContainerStyle={{ paddingBottom: theme.spacing.lg }}>
+			<FlatList
+				data={lots}
+				style={{ flex: 1 }}
+				keyExtractor={(item) => item._id}
+				showsVerticalScrollIndicator={false}
+				contentContainerStyle={{
+					gap: theme.spacing.lg,
+					paddingBottom: theme.spacing["2xl"],
+				}}
+				ListHeaderComponent={
+					<>
+						<ScreenHeader
+							eyebrow="Partner sourcing"
+							title="Lot catalog"
+							subtitle="Browse published inventory and evaluate each lot as a structured partnership opportunity."
+						/>
 
-				{isLoading ? (
-					<Text style={styles.emptyText}>Loading lots…</Text>
-				) : lots.length === 0 ? (
-					<Text style={styles.emptyText}>
-						No published lots available yet.
-					</Text>
-				) : (
-					<FlatList
-						data={lots}
-						keyExtractor={(item) => item._id}
-						renderItem={({ item }) => (
-							<CatalogLotCard
-								lotCode={item.lotCode}
-								farmName={item.farmName}
-								variety={item.variety}
-								region={item.region}
-								country={item.country}
-								ticketUsdcCents={item.ticketUsdcCents}
-								onPress={() =>
-									router.push(
-										`/(partner)/lots/${item.lotCode}` as Href,
-									)
-								}
+						<Section
+							title="Market snapshot"
+							description="A fast read on the current opportunity set available to partner wallets."
+						>
+							<View
+								style={{
+									flexDirection: "row",
+									gap: theme.spacing.sm,
+								}}
+							>
+								<MetricCard
+									tone="partner"
+									eyebrow="Supply"
+									label="Published lots"
+									value={String(lots.length)}
+									helper="Current opportunities in market"
+								/>
+								<MetricCard
+									tone="info"
+									eyebrow="Average"
+									label="Avg. ticket"
+									value={formatUsd(averageTicketUsdcCents)}
+									helper="Mean opportunity size"
+								/>
+							</View>
+							<MetricCard
+								tone="success"
+								eyebrow="Capital"
+								label="Catalog value"
+								value={formatUsd(totalTicketUsdcCents)}
+								helper="Aggregate ticket capacity across live lots"
 							/>
-						)}
-						contentContainerStyle={styles.listContent}
-						showsVerticalScrollIndicator={false}
+						</Section>
+
+						<Section
+							title="Available opportunities"
+							description="Published lots are presented as premium assets with visible ticket size and origin data."
+						/>
+					</>
+				}
+				ListEmptyComponent={
+					isLoading ? (
+						<Banner
+							tone="info"
+							title="Loading catalog"
+							description="Fetching published lots available for partnership."
+						/>
+					) : (
+						<Banner
+							tone="accent"
+							title="No published lots available"
+							description="The catalog will populate once farmers publish lots on-chain."
+							eyebrow="Market idle"
+						/>
+					)
+				}
+				renderItem={({ item }) => (
+					<ListItemCard
+						accessibilityLabel={`Lot ${item.lotCode} ${item.farmName}`}
+						onPress={() =>
+							router.push(`/(partner)/lots/${item.lotCode}` as Href)
+						}
+						tone="partner"
+						eyebrow={item.lotCode}
+						title={item.farmName}
+						subtitle={`Partnership-ready ${item.variety} lot from ${item.region}, ${item.country}`}
+						status={{ label: "published", tone: "success" }}
+						highlight={{
+							label: "Ticket size",
+							value: formatUsd(item.ticketUsdcCents),
+						}}
+						badges={[
+							{ label: item.variety, tone: "partner" },
+							{
+								label: `${trimNumber(item.areaManzanas)} manzanas`,
+								tone: "neutral",
+							},
+						]}
+						details={[
+							{
+								label: "Origin",
+								value: `${item.region}, ${item.country}`,
+							},
+							{
+								label: "Revenue split",
+								value: `${item.farmerShareBps / 100}% / ${item.partnerShareBps / 100}%`,
+								helper: "Farmer / Partner",
+							},
+						]}
 					/>
 				)}
-			</View>
-		</SafeAreaView>
+			/>
+		</Screen>
 	);
 }
 
-interface CatalogLotCardProps {
-	lotCode: string;
-	farmName: string;
-	variety: string;
-	region: string;
-	country: string;
-	ticketUsdcCents: number;
-	onPress: () => void;
+function formatUsd(cents: number) {
+	return `$${(cents / 100).toLocaleString(undefined, {
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 0,
+	})}`;
 }
 
-function CatalogLotCard({
-	lotCode,
-	farmName,
-	variety,
-	region,
-	country,
-	ticketUsdcCents,
-	onPress,
-}: CatalogLotCardProps) {
-	const ticketDisplay = `$${(ticketUsdcCents / 100).toLocaleString()}`;
-
-	return (
-		<TouchableOpacity
-			accessibilityLabel={`Lot ${lotCode} - ${farmName}`}
-			accessibilityRole="button"
-			onPress={onPress}
-			style={styles.lotCard}
-		>
-			<View style={styles.cardHeader}>
-				<Text style={styles.lotCode}>{lotCode}</Text>
-				<Text style={styles.ticket}>{ticketDisplay}</Text>
-			</View>
-			<Text style={styles.farmName}>{farmName}</Text>
-			<View style={styles.cardDetails}>
-				<Text style={styles.detail}>{variety}</Text>
-				<Text style={styles.detail}>
-					{region}, {country}
-				</Text>
-			</View>
-		</TouchableOpacity>
-	);
+function trimNumber(value: number) {
+	return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
-
-const styles = StyleSheet.create({
-	screen: { flex: 1, backgroundColor: "#f9fafb" },
-	container: { flex: 1, padding: 16, gap: 12 },
-	title: { fontSize: 22, fontWeight: "bold", color: "#111827" },
-	subtitle: { fontSize: 14, color: "#6b7280" },
-	emptyText: { fontSize: 14, color: "#9ca3af", marginTop: 8 },
-	listContent: { gap: 10, paddingBottom: 24 },
-	lotCard: {
-		backgroundColor: "#ffffff",
-		borderRadius: 8,
-		padding: 14,
-		borderWidth: 1,
-		borderColor: "#e5e7eb",
-		gap: 6,
-	},
-	cardHeader: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-	},
-	lotCode: { fontSize: 14, fontWeight: "700", color: "#111827" },
-	ticket: { fontSize: 14, fontWeight: "700", color: "#7c3aed" },
-	farmName: { fontSize: 15, fontWeight: "500", color: "#374151" },
-	cardDetails: { flexDirection: "row", gap: 12 },
-	detail: { fontSize: 13, color: "#6b7280" },
-});

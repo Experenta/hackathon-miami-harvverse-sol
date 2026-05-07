@@ -1,35 +1,42 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-	ActivityIndicator,
-	Alert,
-	ScrollView,
-	StyleSheet,
-	Text,
-	TouchableOpacity,
-	View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, Alert, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import type { Address } from "@solana/kit";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
 import { fetchFarmerProfileByWallet } from "@repo/solana-client";
-import { useTransaction } from "@/hooks/use-transaction";
-import { ellipsify } from "@/utils/ellipsify";
 import {
-	computePublishHashes,
+	ActionBar,
+	Badge,
+	Banner,
+	Button,
+	Card,
+	DetailRow,
+	MetricCard,
+	Screen,
+	ScreenHeader,
+	Section,
+	StatusPill,
+	TxStatus,
+} from "@/components/ui";
+import {
 	buildPublishInstructions,
+	computePublishHashes,
 	type LotPublishData,
 	type PublishFlowResult,
 } from "@/features/farmer/publish-flow";
 import { useNetwork } from "@/features/network/use-network";
+import { useTransaction } from "@/hooks/use-transaction";
+import { useTheme } from "@/theme";
+import { ellipsify } from "@/utils/ellipsify";
 
 export default function PublishReviewScreen() {
 	const { lotCode } = useLocalSearchParams<{ lotCode: string }>();
 	const { account, client } = useMobileWallet();
 	const { selectedNetwork } = useNetwork();
 	const router = useRouter();
+	const { theme } = useTheme();
 	const {
 		signAndSendWithSigner,
 		isPending,
@@ -96,10 +103,9 @@ export default function PublishReviewScreen() {
 		};
 	}, [client.rpc, wallet, selectedNetwork.id]);
 
-	// Compute hashes when all data is loaded
 	useEffect(() => {
 		if (!lot || !lotCode || !wallet) return;
-		if (hashes) return; // already computed
+		if (hashes) return;
 
 		const compute = async () => {
 			setIsComputing(true);
@@ -182,14 +188,12 @@ export default function PublishReviewScreen() {
 				return instructions;
 			});
 
-			// Record on-chain lot PDA
 			await recordOnChainLot({
 				lotCode: lot.lotCode,
 				lotPda: hashes.lotPda.toString(),
 				tx: result.signature,
 			});
 
-			// Mark as published with hashes
 			await markPublished({
 				lotCode: lot.lotCode,
 				tx: result.signature,
@@ -214,326 +218,304 @@ export default function PublishReviewScreen() {
 		markPublished,
 	]);
 
-	// Loading state
 	if (lot === undefined || !lotCode) {
 		return (
-			<SafeAreaView style={styles.screen}>
-				<View style={styles.centered}>
-					<ActivityIndicator size="large" color="#059669" />
-					<Text style={styles.loadingText}>Loading lot data…</Text>
-				</View>
-			</SafeAreaView>
+			<Screen
+				contentContainerStyle={{
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<ActivityIndicator
+					color={theme.colors.action.primary.background}
+					size="large"
+				/>
+				<Text
+					style={[
+						theme.typography.bodyMd,
+						{ color: theme.colors.text.secondary },
+					]}
+				>
+					Loading lot data...
+				</Text>
+			</Screen>
 		);
 	}
 
 	if (!lot) {
 		return (
-			<SafeAreaView style={styles.screen}>
-				<View style={styles.centered}>
-					<Text style={styles.errorText}>
-						Lot not found: {lotCode}
-					</Text>
-				</View>
-			</SafeAreaView>
-		);
-	}
-
-	// Already published
-	if (publishedTx) {
-		return (
-			<SafeAreaView style={styles.screen}>
-				<ScrollView contentContainerStyle={styles.container}>
-					<View style={styles.successCard}>
-						<Text style={styles.successTitle}>
-							🎉 Lot Published On-Chain!
-						</Text>
-						<View style={styles.detailRow}>
-							<Text style={styles.detailLabel}>Lot Code</Text>
-							<Text style={styles.detailValue}>
-								{lot.lotCode}
-							</Text>
-						</View>
-						<View style={styles.detailRow}>
-							<Text style={styles.detailLabel}>Lot PDA</Text>
-							<Text style={styles.detailValueMono}>
-								{hashes
-									? ellipsify(hashes.lotPda.toString())
-									: "—"}
-							</Text>
-						</View>
-						<View style={styles.detailRow}>
-							<Text style={styles.detailLabel}>Transaction</Text>
-							<Text style={styles.detailValueMono}>
-								{ellipsify(publishedTx)}
-							</Text>
-						</View>
-					</View>
-					<TouchableOpacity
-						accessibilityLabel="Back to dashboard"
-						accessibilityRole="button"
-						onPress={() => router.back()}
-						style={styles.backButton}
-					>
-						<Text style={styles.backButtonText}>
-							← Back to Dashboard
-						</Text>
-					</TouchableOpacity>
-				</ScrollView>
-			</SafeAreaView>
+			<Screen
+				contentContainerStyle={{
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<Banner
+					tone="error"
+					title="Lot not found"
+					description={`No lot was found for ${lotCode}.`}
+				/>
+			</Screen>
 		);
 	}
 
 	const ticketDisplay = `$${(lot.ticketUsdcCents / 100).toLocaleString()}`;
+	const farmerShare = `${lot.farmerShareBps / 100}%`;
+	const partnerShare = `${lot.partnerShareBps / 100}%`;
 	const isProfileReady = hasFarmerProfile === true;
 
+	if (publishedTx) {
+		return (
+			<Screen scrollable>
+				<ScreenHeader
+					eyebrow="Asset published"
+					title="Lot is now on-chain"
+					subtitle="The asset package was signed, recorded, and linked to its on-chain lot PDA."
+				/>
+
+				<TxStatus
+					state="confirmed"
+					signature={ellipsify(publishedTx)}
+				/>
+
+				<Section
+					title="On-chain record"
+					description="Primary identifiers are retained, while digital references stay visually secondary."
+					aside={<Badge label="Recorded" tone="success" />}
+				>
+					<Card variant="success">
+						<DetailRow label="Lot code" value={lot.lotCode} />
+						<DetailRow
+							label="Lot PDA"
+							value={hashes ? ellipsify(hashes.lotPda.toString()) : "-"}
+							mono
+							valueTone="secondary"
+						/>
+						<DetailRow
+							label="Transaction"
+							value={ellipsify(publishedTx)}
+							mono
+							valueTone="secondary"
+						/>
+					</Card>
+				</Section>
+
+				<ActionBar>
+					<Button
+						title="Back to Dashboard"
+						variant="secondary"
+						onPress={() => router.back()}
+					/>
+				</ActionBar>
+			</Screen>
+		);
+	}
+
 	return (
-		<SafeAreaView style={styles.screen}>
-			<ScrollView contentContainerStyle={styles.container}>
-				<Text style={styles.title}>Publish Review</Text>
-				<Text style={styles.subtitle}>
-					Review your lot details before publishing on-chain.
-				</Text>
+		<Screen scrollable>
+			<ScreenHeader
+				eyebrow="Asset review"
+				title="Publish review"
+				subtitle="Review the lot package before converting this asset into an on-chain record."
+			/>
 
-				{/* Lot summary */}
-				<View style={styles.card}>
-					<Text style={styles.cardTitle}>Lot Summary</Text>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Network</Text>
-						<Text style={styles.detailValue}>
-							{selectedNetwork.label}
-						</Text>
-					</View>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Code</Text>
-						<Text style={styles.detailValue}>{lot.lotCode}</Text>
-					</View>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Farm</Text>
-						<Text style={styles.detailValue}>{lot.farmName}</Text>
-					</View>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Variety</Text>
-						<Text style={styles.detailValue}>{lot.variety}</Text>
-					</View>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Location</Text>
-						<Text style={styles.detailValue}>
-							{lot.region}, {lot.country}
-						</Text>
-					</View>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Ticket</Text>
-						<Text style={styles.detailValue}>{ticketDisplay}</Text>
-					</View>
-					<View style={styles.detailRow}>
-						<Text style={styles.detailLabel}>Split</Text>
-						<Text style={styles.detailValue}>
-							Farmer {lot.farmerShareBps / 100}% / Partner{" "}
-							{lot.partnerShareBps / 100}%
-						</Text>
-					</View>
+			<Section
+				description="This keeps the current publish logic, hashes, and wallet flow unchanged."
+				aside={<Badge label="Farmer flow" tone="brand" />}
+			>
+				<View
+					style={{
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: theme.spacing.sm,
+					}}
+				>
+					<StatusPill label={selectedNetwork.label} tone="accent" />
+					<StatusPill
+						label={isProfileReady ? "Profile ready" : "Profile check"}
+						tone={isProfileReady ? "success" : "warning"}
+					/>
 				</View>
+			</Section>
 
-				{/* Hash preview */}
-				<View style={styles.card}>
-					<Text style={styles.cardTitle}>Manifest Hashes</Text>
-					{isComputing ? (
-						<ActivityIndicator size="small" color="#6b7280" />
-					) : hashes ? (
-						<>
-							<HashRow
-								label="Metadata"
-								hash={hashes.metadataHashHex}
-							/>
-							<HashRow label="Plan" hash={hashes.planHashHex} />
-							<HashRow
-								label="Media"
-								hash={hashes.mediaManifestHashHex}
-							/>
-							<HashRow
-								label="Sensor"
-								hash={hashes.sensorManifestHashHex}
-							/>
-							<View style={styles.detailRow}>
-								<Text style={styles.detailLabel}>Lot PDA</Text>
-								<Text style={styles.detailValueMono}>
-									{ellipsify(hashes.lotPda.toString())}
-								</Text>
-							</View>
-						</>
-					) : (
-						<Text style={styles.hashError}>
-							Failed to compute hashes
-						</Text>
-					)}
+			<Section
+				title="Asset snapshot"
+				description="Financial and share terms that will feed the publish instruction."
+			>
+				<View
+					style={{
+						flexDirection: "row",
+						flexWrap: "wrap",
+						gap: theme.spacing.sm,
+					}}
+				>
+					<MetricCard
+						label="Ticket value"
+						value={ticketDisplay}
+						helper={`${lot.areaManzanas} manzanas`}
+						eyebrow="Primary lot"
+						tone="farmer"
+						style={{ minWidth: 160 }}
+					/>
+					<MetricCard
+						label="Farmer share"
+						value={farmerShare}
+						helper="Revenue participation"
+						tone="success"
+						style={{ minWidth: 160 }}
+					/>
+					<MetricCard
+						label="Partner share"
+						value={partnerShare}
+						helper="Reserved for partner economics"
+						tone="partner"
+						style={{ minWidth: 160 }}
+					/>
 				</View>
+			</Section>
 
+			<Section
+				title="Lot asset"
+				description="Human-readable fields stay primary before signing."
+				aside={<Badge label={lot.variety} tone="neutral" />}
+			>
+				<Card variant="selected">
+					<DetailRow label="Lot code" value={lot.lotCode} />
+					<DetailRow label="Farm" value={lot.farmName} />
+					<DetailRow label="Variety" value={lot.variety} />
+					<DetailRow
+						label="Location"
+						value={`${lot.region}, ${lot.country}`}
+					/>
+					<DetailRow
+						label="Coordinates"
+						value={`${lot.latitude}, ${lot.longitude}`}
+						valueTone="secondary"
+					/>
+				</Card>
+			</Section>
+
+			<Section
+				title="Digital manifests"
+				description="Hashes, PDA, and derived identifiers remain visually secondary."
+				aside={<Badge label="Derived" tone="info" />}
+			>
+				{isComputing ? (
+					<Banner
+						tone="info"
+						title="Computing publish manifests"
+						description="Metadata, plan, media, and sensor manifests are being derived from the existing payloads."
+						accessory={<ActivityIndicator size="small" />}
+					/>
+				) : hashes ? (
+					<Card variant="muted">
+						<DetailRow
+							label="Metadata hash"
+							value={ellipsify(hashes.metadataHashHex, 8)}
+							helper="Lot metadata manifest"
+							mono
+							valueTone="secondary"
+						/>
+						<DetailRow
+							label="Plan hash"
+							value={ellipsify(hashes.planHashHex, 8)}
+							helper="Agronomic plan payload"
+							mono
+							valueTone="secondary"
+						/>
+						<DetailRow
+							label="Media hash"
+							value={ellipsify(hashes.mediaManifestHashHex, 8)}
+							helper="Media manifest"
+							mono
+							valueTone="secondary"
+						/>
+						<DetailRow
+							label="Sensor hash"
+							value={ellipsify(hashes.sensorManifestHashHex, 8)}
+							helper="Sensor manifest"
+							mono
+							valueTone="secondary"
+						/>
+						<DetailRow
+							label="Lot PDA"
+							value={ellipsify(hashes.lotPda.toString())}
+							mono
+							valueTone="secondary"
+						/>
+					</Card>
+				) : (
+					<Banner
+						tone="error"
+						title="Failed to compute manifests"
+						description="The publish review could not derive the required hashes."
+					/>
+				)}
+			</Section>
+
+			<Section title="Publish readiness">
 				{hasFarmerProfile === null ? (
-					<View style={styles.noticeCard}>
-						<ActivityIndicator size="small" color="#6b7280" />
-						<Text style={styles.noticeText}>
-							Checking on-chain farmer profile…
-						</Text>
-					</View>
+					<Banner
+						tone="info"
+						title="Checking farmer profile"
+						description="Verifying that the connected wallet already owns the required FarmerProfile PDA."
+						accessory={<ActivityIndicator size="small" />}
+					/>
 				) : hasFarmerProfile === false ? (
-					<View style={styles.warningCard}>
-						<Text style={styles.warningTitle}>
-							Farmer profile required
-						</Text>
-						<Text style={styles.warningText}>
-							This wallet does not have the FarmerProfile PDA
-							required by create_lot.
-						</Text>
-						{profileCheckError && (
-							<Text style={styles.warningDetail}>
-								{profileCheckError}
-							</Text>
-						)}
-						<TouchableOpacity
-							accessibilityLabel="Create farmer profile"
-							accessibilityRole="button"
-							onPress={() =>
-								router.push("/(farmer)/profile" as Href)
-							}
-							style={styles.profileButton}
-						>
-							<Text style={styles.profileButtonText}>
-								Create Farmer Profile
-							</Text>
-						</TouchableOpacity>
-					</View>
-				) : null}
+					<Banner
+						tone="warning"
+						title="Farmer profile required"
+						description="This wallet does not have the FarmerProfile PDA required by create_lot."
+					>
+						{profileCheckError ? (
+							<DetailRow
+								label="Check detail"
+								value={ellipsify(profileCheckError, 24)}
+								mono
+								valueTone="secondary"
+							/>
+						) : null}
+						<Button
+							title="Create Farmer Profile"
+							variant="accent"
+							onPress={() => router.push("/(farmer)/profile" as Href)}
+						/>
+					</Banner>
+				) : (
+					<Banner
+						tone="success"
+						title="Farmer profile verified"
+						description="The wallet is eligible to sign the publish transaction."
+					/>
+				)}
+			</Section>
 
-				{/* Publish button */}
-				<TouchableOpacity
-					accessibilityLabel="Sign and publish lot"
-					accessibilityRole="button"
+			<ActionBar>
+				<Button
+					title="Sign and Publish On-Chain"
+					onPress={handlePublish}
 					disabled={
 						isPending || !hashes || isComputing || !isProfileReady
 					}
-					onPress={handlePublish}
+					loading={isPending}
+				/>
+				<Text
 					style={[
-						styles.publishButton,
-						(isPending ||
-							!hashes ||
-							isComputing ||
-							!isProfileReady) &&
-							styles.publishButtonDisabled,
+						theme.typography.caption,
+						{
+							color: theme.colors.text.muted,
+							textAlign: "center",
+						},
 					]}
 				>
-					{isPending ? (
-						<ActivityIndicator color="#ffffff" size="small" />
-					) : (
-						<Text style={styles.publishButtonText}>
-							Sign and Publish On-Chain
-						</Text>
-					)}
-				</TouchableOpacity>
+					The transaction path, mutations, and navigation remain unchanged.
+				</Text>
+			</ActionBar>
 
-				{txError && (
-					<Text style={styles.txErrorText}>{txError.message}</Text>
-				)}
-			</ScrollView>
-		</SafeAreaView>
+			{isPending ? <TxStatus state="pending" /> : null}
+			{txError ? (
+				<TxStatus state="failed" errorMessage={txError.message} />
+			) : null}
+		</Screen>
 	);
 }
-
-function HashRow({ label, hash }: { label: string; hash: string }) {
-	return (
-		<View style={styles.detailRow}>
-			<Text style={styles.detailLabel}>{label}</Text>
-			<Text style={styles.detailValueMono}>{ellipsify(hash, 8)}</Text>
-		</View>
-	);
-}
-
-const styles = StyleSheet.create({
-	screen: { flex: 1, backgroundColor: "#f9fafb" },
-	container: { padding: 16, gap: 14, paddingBottom: 40 },
-	centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-	loadingText: { marginTop: 8, fontSize: 14, color: "#6b7280" },
-	errorText: { fontSize: 15, color: "#dc2626" },
-	noticeCard: {
-		backgroundColor: "#ffffff",
-		borderRadius: 8,
-		padding: 14,
-		borderWidth: 1,
-		borderColor: "#e5e7eb",
-		flexDirection: "row",
-		alignItems: "center",
-		gap: 10,
-	},
-	noticeText: { fontSize: 13, color: "#6b7280" },
-	warningCard: {
-		backgroundColor: "#fffbeb",
-		borderRadius: 8,
-		padding: 14,
-		borderWidth: 1,
-		borderColor: "#fcd34d",
-		gap: 8,
-	},
-	warningTitle: { fontSize: 15, fontWeight: "700", color: "#92400e" },
-	warningText: { fontSize: 13, color: "#92400e" },
-	warningDetail: { fontSize: 12, color: "#b45309", fontFamily: "monospace" },
-	profileButton: {
-		backgroundColor: "#92400e",
-		borderRadius: 8,
-		paddingVertical: 10,
-		alignItems: "center",
-		marginTop: 4,
-	},
-	profileButtonText: { color: "#ffffff", fontSize: 13, fontWeight: "600" },
-	title: { fontSize: 22, fontWeight: "bold", color: "#111827" },
-	subtitle: { fontSize: 14, color: "#6b7280" },
-	card: {
-		backgroundColor: "#ffffff",
-		borderRadius: 8,
-		padding: 14,
-		borderWidth: 1,
-		borderColor: "#e5e7eb",
-		gap: 8,
-	},
-	cardTitle: { fontSize: 15, fontWeight: "600", color: "#111827" },
-	detailRow: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-	},
-	detailLabel: { fontSize: 13, color: "#6b7280" },
-	detailValue: { fontSize: 13, fontWeight: "500", color: "#111827" },
-	detailValueMono: {
-		fontSize: 12,
-		fontWeight: "500",
-		color: "#111827",
-		fontFamily: "monospace",
-	},
-	hashError: { fontSize: 13, color: "#dc2626" },
-	publishButton: {
-		backgroundColor: "#7c3aed",
-		borderRadius: 8,
-		paddingVertical: 14,
-		alignItems: "center",
-		marginTop: 8,
-	},
-	publishButtonDisabled: { opacity: 0.6 },
-	publishButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "600" },
-	txErrorText: { color: "#dc2626", fontSize: 13, marginTop: 4 },
-	successCard: {
-		backgroundColor: "#ecfdf5",
-		borderRadius: 8,
-		padding: 16,
-		borderWidth: 1,
-		borderColor: "#a7f3d0",
-		gap: 10,
-	},
-	successTitle: { fontSize: 18, fontWeight: "bold", color: "#065f46" },
-	backButton: {
-		backgroundColor: "#f3f4f6",
-		borderRadius: 8,
-		paddingVertical: 12,
-		alignItems: "center",
-		borderWidth: 1,
-		borderColor: "#d1d5db",
-	},
-	backButtonText: { fontSize: 14, fontWeight: "600", color: "#374151" },
-});

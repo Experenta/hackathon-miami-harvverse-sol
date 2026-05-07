@@ -1,85 +1,68 @@
 import { useEffect } from "react";
-import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { useWalletConnection } from "@/features/wallet/use-wallet-connection";
 import { NetworkSelector } from "@/components/network-selector";
+import {
+	ActionBar,
+	Badge,
+	Banner,
+	Button,
+	DetailRow,
+	Screen,
+	ScreenHeader,
+	Section,
+} from "@/components/ui";
+import { useWalletConnection } from "@/features/wallet/use-wallet-connection";
+import { useTheme } from "@/theme";
 
 export default function ConnectWalletScreen() {
-  const router = useRouter();
-  const { account, connect, connectAndUpsert } = useWalletConnection();
+	const router = useRouter();
+	const { account, connect, connectAndUpsert } = useWalletConnection();
+	const { theme } = useTheme();
 
-  // Once the wallet connects, upsert the user record and navigate to index
-  // which will handle role-based routing.
-  useEffect(() => {
-    if (account) {
-      connectAndUpsert(account.address.toString()).catch(console.error);
-      router.replace("/");
-    }
-  }, [account, connectAndUpsert, router]);
+	useEffect(() => {
+		if (account) {
+			connectAndUpsert(account.address.toString()).catch(console.error);
+			router.replace("/");
+		}
+	}, [account, connectAndUpsert, router]);
 
-  return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Harvverse</Text>
-        <Text style={styles.subtitle}>
-          Connect your Solana wallet to get started
-        </Text>
+	return (
+		<Screen contentContainerStyle={{ justifyContent: "center" }}>
+			<ScreenHeader
+				eyebrow="Harvverse"
+				title="Enter the network"
+				subtitle="Connect a Mobile Wallet Adapter compatible Solana wallet to continue into the Android app."
+				trailing={<Badge label="Android only" tone="brand" />}
+			/>
 
-        <NetworkSelector />
+			<Banner
+				title="Wallet connection is the only gate here"
+				description="After the wallet connects, the current flow still upserts the user and routes back to the root screen."
+			/>
 
-        <TouchableOpacity style={styles.button} onPress={connect}>
-          <Text style={styles.buttonText}>Connect Wallet</Text>
-        </TouchableOpacity>
+			<Section
+				title="Session"
+				description="Choose the cluster for this device session before connecting."
+			>
+				<NetworkSelector />
+				<View style={{ gap: theme.spacing.xs, paddingTop: theme.spacing.xs }}>
+					<DetailRow label="Adapter" value="Mobile Wallet Adapter" />
+					<DetailRow label="Wallets" value="Phantom, Solflare" />
+				</View>
+			</Section>
 
-        <Text style={styles.hint}>
-          Requires a Mobile Wallet Adapter compatible wallet (e.g. Phantom,
-          Solflare)
-        </Text>
-      </View>
-    </SafeAreaView>
-  );
+			<ActionBar>
+				<Button title="Connect Wallet" onPress={connect} />
+				<Text
+					style={[
+						theme.typography.caption,
+						{ color: theme.colors.text.muted, textAlign: "center" },
+					]}
+				>
+					Requires a compatible wallet app installed on Android.
+				</Text>
+			</ActionBar>
+		</Screen>
+	);
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-  },
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#111827",
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#6b7280",
-    textAlign: "center",
-  },
-  button: {
-    alignItems: "center",
-    backgroundColor: "#16a34a",
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  hint: {
-    fontSize: 12,
-    color: "#9ca3af",
-    textAlign: "center",
-    marginTop: 8,
-  },
-});
