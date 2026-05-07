@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { ActivityIndicator, Image, Text, View } from "react-native";
-import Animated, {
-	FadeIn,
-	FadeInDown,
-	FadeInUp,
-} from "react-native-reanimated";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useRouter, type Href } from "expo-router";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import { useMutation } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
 import { buildRegisterRoleTx, RoleKind } from "@repo/solana-client";
 import { DisconnectWalletButton } from "@/components/disconnect-wallet-button";
-import { WalletAddressCard } from "@/components/wallet-address-card";
-import { ActionBar, Banner, Button, Screen, Section } from "@/components/ui";
+import { ActionBar, Banner, Button, Screen } from "@/components/ui";
 import { useRole } from "@/features/role/use-role";
 import { useTransaction } from "@/hooks/use-transaction";
 import { useTheme } from "@/theme";
@@ -102,18 +97,32 @@ export default function RoleSelectScreen() {
 	}
 
 	return (
-		<Screen scrollable>
+		<Screen contentContainerStyle={{ justifyContent: "space-between" }}>
+			{/* Disconnect icon – top right */}
+			{account ? (
+				<View
+					style={{
+						position: "absolute",
+						top: 0,
+						right: 0,
+						zIndex: 1,
+					}}
+				>
+					<DisconnectWalletButton />
+				</View>
+			) : null}
+
 			{/* Hero header */}
 			<Animated.View
 				entering={FadeInDown.delay(50).duration(150)}
-				style={{ alignItems: "center", gap: theme.spacing.md }}
+				style={{ alignItems: "center", gap: theme.spacing.sm }}
 			>
 				<Image
 					source={require("@/assets/images/harvverse_logo.png")}
-					style={{ width: 56, height: 56 }}
+					style={{ width: 48, height: 48 }}
 					resizeMode="contain"
 				/>
-				<View style={{ alignItems: "center", gap: theme.spacing.xs }}>
+				<View style={{ alignItems: "center", gap: 4 }}>
 					<Text
 						style={[
 							theme.typography.labelSm,
@@ -139,7 +148,7 @@ export default function RoleSelectScreen() {
 					</Text>
 					<Text
 						style={[
-							theme.typography.bodyMd,
+							theme.typography.bodySm,
 							{
 								color: theme.colors.text.secondary,
 								textAlign: "center",
@@ -153,216 +162,193 @@ export default function RoleSelectScreen() {
 				</View>
 			</Animated.View>
 
-			{/* Wallet section */}
-			{account ? (
-				<Animated.View entering={FadeIn.delay(75).duration(250)}>
-					<Section
-						title="Connected wallet"
-						aside={<DisconnectWalletButton />}
-					>
-						<WalletAddressCard
-							address={account.address.toString()}
-							label="Signing wallet"
-						/>
-					</Section>
-				</Animated.View>
-			) : null}
-
 			{/* Role cards */}
 			<Animated.View entering={FadeInUp.delay(50).duration(150)}>
-				<Section
-					title="Available roles"
-					description="Select the role that matches your participation in Harvverse."
-				>
-					<View style={{ gap: theme.spacing.md }}>
-						{ROLE_OPTIONS.map((option) => {
-							const isSelected = selectedRole === option.value;
-							const roleColor = option.color;
+				<View style={{ gap: theme.spacing.sm }}>
+					{ROLE_OPTIONS.map((option) => {
+						const isSelected = selectedRole === option.value;
+						const roleColor = option.color;
 
-							return (
-								<Animated.View
-									key={option.value}
-									entering={FadeInUp.delay(
-										option.value === "farmer" ? 500 : 600,
-									).duration(250)}
+						return (
+							<Animated.View
+								key={option.value}
+								entering={FadeInUp.delay(
+									option.value === "farmer" ? 500 : 600,
+								).duration(250)}
+							>
+								<View
+									onTouchEnd={() =>
+										!isPending &&
+										setSelectedRole(option.value)
+									}
+									style={{
+										backgroundColor: isSelected
+											? `${roleColor}12`
+											: theme.colors.surface.default,
+										borderColor: isSelected
+											? `${roleColor}40`
+											: theme.colors.border.subtle,
+										borderWidth: isSelected ? 2 : 1,
+										borderRadius: theme.radius.lg,
+										padding: theme.spacing.md,
+										gap: theme.spacing.sm,
+									}}
 								>
 									<View
 										style={{
-											backgroundColor: isSelected
-												? `${roleColor}12`
-												: theme.colors.surface.default,
-											borderColor: isSelected
-												? `${roleColor}40`
-												: theme.colors.border.subtle,
-											borderWidth: isSelected ? 2 : 1,
-											borderRadius: theme.radius.xl,
-											padding: theme.spacing.lg,
-											gap: theme.spacing.md,
+											flexDirection: "row",
+											alignItems: "center",
+											gap: theme.spacing.sm,
 										}}
 									>
+										{/* Role icon */}
 										<View
-											onTouchEnd={() =>
-												!isPending &&
-												setSelectedRole(option.value)
-											}
 											style={{
-												flexDirection: "row",
+												width: 40,
+												height: 40,
+												borderRadius: 20,
+												backgroundColor: `${roleColor}16`,
+												borderColor: `${roleColor}32`,
+												borderWidth: 1,
 												alignItems: "center",
-												gap: theme.spacing.md,
+												justifyContent: "center",
 											}}
 										>
-											{/* Role icon */}
+											<Text style={{ fontSize: 20 }}>
+												{option.emoji}
+											</Text>
+										</View>
+
+										{/* Role info */}
+										<View style={{ flex: 1, gap: 2 }}>
 											<View
 												style={{
-													width: 52,
-													height: 52,
-													borderRadius: 26,
-													backgroundColor: `${roleColor}16`,
-													borderColor: `${roleColor}32`,
-													borderWidth: 1,
+													flexDirection: "row",
 													alignItems: "center",
-													justifyContent: "center",
+													gap: theme.spacing.xs,
 												}}
 											>
-												<Text style={{ fontSize: 24 }}>
-													{option.emoji}
-												</Text>
-											</View>
-
-											{/* Role info */}
-											<View style={{ flex: 1, gap: 4 }}>
-												<View
-													style={{
-														flexDirection: "row",
-														alignItems: "center",
-														gap: theme.spacing.xs,
-													}}
-												>
-													<Text
-														style={[
-															theme.typography
-																.text2,
-															{
-																color: theme
-																	.colors.text
-																	.primary,
-															},
-														]}
-													>
-														{option.label}
-													</Text>
-													{isSelected ? (
-														<View
-															style={{
-																backgroundColor:
-																	roleColor,
-																borderRadius:
-																	theme.radius
-																		.pill,
-																paddingHorizontal: 8,
-																paddingVertical: 2,
-															}}
-														>
-															<Text
-																style={[
-																	theme
-																		.typography
-																		.labelSm,
-																	{
-																		color: theme
-																			.colors
-																			.text
-																			.inverse,
-																		fontSize: 10,
-																	},
-																]}
-															>
-																SELECTED
-															</Text>
-														</View>
-													) : null}
-												</View>
 												<Text
 													style={[
-														theme.typography.bodySm,
+														theme.typography.text2,
+														{
+															color: theme.colors
+																.text.primary,
+														},
+													]}
+												>
+													{option.label}
+												</Text>
+												{isSelected ? (
+													<View
+														style={{
+															backgroundColor:
+																roleColor,
+															borderRadius:
+																theme.radius
+																	.pill,
+															paddingHorizontal: 8,
+															paddingVertical: 2,
+														}}
+													>
+														<Text
+															style={[
+																theme.typography
+																	.labelSm,
+																{
+																	color: theme
+																		.colors
+																		.text
+																		.inverse,
+																	fontSize: 10,
+																},
+															]}
+														>
+															SELECTED
+														</Text>
+													</View>
+												) : null}
+											</View>
+											<Text
+												style={[
+													theme.typography.caption,
+													{
+														color: theme.colors.text
+															.secondary,
+													},
+												]}
+												numberOfLines={2}
+											>
+												{option.description}
+											</Text>
+										</View>
+									</View>
+
+									{/* Role capabilities */}
+									<View
+										style={{
+											flexDirection: "row",
+											flexWrap: "wrap",
+											gap: theme.spacing.xs,
+										}}
+									>
+										{(option.value === "farmer"
+											? [
+													"Create lots",
+													"Publish on-chain",
+													"Track plans",
+												]
+											: [
+													"Browse catalog",
+													"Reserve positions",
+													"View settlements",
+												]
+										).map((cap) => (
+											<View
+												key={cap}
+												style={{
+													flexDirection: "row",
+													alignItems: "center",
+													gap: 4,
+													backgroundColor:
+														theme.colors.surface
+															.subtle,
+													borderRadius:
+														theme.radius.pill,
+													paddingHorizontal:
+														theme.spacing.xs,
+													paddingVertical: 3,
+												}}
+											>
+												<View
+													style={{
+														width: 5,
+														height: 5,
+														borderRadius: 3,
+														backgroundColor:
+															roleColor,
+													}}
+												/>
+												<Text
+													style={[
+														theme.typography
+															.caption,
 														{
 															color: theme.colors
 																.text.secondary,
 														},
 													]}
 												>
-													{option.description}
+													{cap}
 												</Text>
 											</View>
-										</View>
-
-										{/* Role capabilities */}
-										<View
-											style={{
-												flexDirection: "row",
-												flexWrap: "wrap",
-												gap: theme.spacing.xs,
-											}}
-										>
-											{(option.value === "farmer"
-												? [
-														"Create lots",
-														"Publish on-chain",
-														"Track plans",
-													]
-												: [
-														"Browse catalog",
-														"Reserve positions",
-														"View settlements",
-													]
-											).map((cap) => (
-												<View
-													key={cap}
-													style={{
-														flexDirection: "row",
-														alignItems: "center",
-														gap: 4,
-														backgroundColor:
-															theme.colors.surface
-																.subtle,
-														borderRadius:
-															theme.radius.pill,
-														paddingHorizontal:
-															theme.spacing.xs,
-														paddingVertical: 4,
-													}}
-												>
-													<View
-														style={{
-															width: 5,
-															height: 5,
-															borderRadius: 3,
-															backgroundColor:
-																roleColor,
-														}}
-													/>
-													<Text
-														style={[
-															theme.typography
-																.caption,
-															{
-																color: theme
-																	.colors.text
-																	.secondary,
-															},
-														]}
-													>
-														{cap}
-													</Text>
-												</View>
-											))}
-										</View>
+										))}
 									</View>
-								</Animated.View>
-							);
-						})}
-					</View>
-				</Section>
+								</View>
+							</Animated.View>
+						);
+					})}
+				</View>
 			</Animated.View>
 
 			{/* Status messages */}
@@ -397,18 +383,6 @@ export default function RoleSelectScreen() {
 						disabled={!selectedRole || isPending}
 						loading={isPending}
 					/>
-					<Text
-						style={[
-							theme.typography.caption,
-							{
-								color: theme.colors.text.muted,
-								textAlign: "center",
-							},
-						]}
-					>
-						This signs a Solana transaction to register your
-						permanent on-chain role.
-					</Text>
 				</ActionBar>
 			</Animated.View>
 		</Screen>

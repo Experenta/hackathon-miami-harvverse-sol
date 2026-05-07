@@ -75,6 +75,7 @@ export default function SettlementPreviewScreen() {
 			{/* Hero */}
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
+					showBack
 					eyebrow="Yield statement"
 					title="Settlement preview"
 					subtitle={`Projected settlement math for lot ${partnership.lotCode}.`}

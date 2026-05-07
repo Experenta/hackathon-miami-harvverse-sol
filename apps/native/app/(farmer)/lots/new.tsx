@@ -180,6 +180,7 @@ export default function CreateLotScreen() {
 			{/* Hero */}
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
+					showBack
 					eyebrow="Farmer flow"
 					title="Create new lot"
 					subtitle="Compose the lot draft first, then enrich it with plan and sensor data before publish review."

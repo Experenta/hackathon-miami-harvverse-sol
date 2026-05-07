@@ -1,10 +1,11 @@
-import { FlatList, Text, View } from "react-native";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import Animated, {
 	FadeIn,
 	FadeInDown,
 	FadeInUp,
 } from "react-native-reanimated";
 import { useRouter, type Href } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import { DisconnectWalletButton } from "@/components/disconnect-wallet-button";
 import {
@@ -88,7 +89,39 @@ export default function FarmerHomeScreen() {
 										Portfolio
 									</Text>
 								</View>
-								<DisconnectWalletButton />
+								<View
+									style={{
+										flexDirection: "row",
+										alignItems: "center",
+										gap: theme.spacing.sm,
+									}}
+								>
+									<TouchableOpacity
+										accessibilityLabel="Edit profile"
+										accessibilityRole="button"
+										onPress={() =>
+											router.push(
+												"/(farmer)/profile" as Href,
+											)
+										}
+										style={{
+											width: 36,
+											height: 36,
+											borderRadius: 18,
+											backgroundColor:
+												theme.colors.surface.subtle,
+											alignItems: "center",
+											justifyContent: "center",
+										}}
+									>
+										<MaterialIcons
+											name="person-outline"
+											size={18}
+											color={theme.colors.text.muted}
+										/>
+									</TouchableOpacity>
+									<DisconnectWalletButton />
+								</View>
 							</View>
 						</Animated.View>
 

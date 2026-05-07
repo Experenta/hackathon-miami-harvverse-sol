@@ -13,6 +13,7 @@ import {
 } from "@repo/solana-client";
 import {
 	ActionBar,
+	BackButton,
 	Banner,
 	Button,
 	Card,
@@ -132,6 +133,9 @@ export default function FarmerProfileScreen() {
 
 	return (
 		<Screen scrollable>
+			{/* Back */}
+			<BackButton />
+
 			{/* Status */}
 			<Animated.View entering={FadeIn.duration(150)}>
 				<StatusPill

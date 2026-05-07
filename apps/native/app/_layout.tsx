@@ -5,25 +5,34 @@ import { AppProviders } from "@/components/app-providers";
 import { useTheme } from "@/theme";
 
 function ThemedStatusBar() {
-  const { resolvedMode } = useTheme();
+	const { resolvedMode } = useTheme();
 
-  return <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />;
+	return <StatusBar style={resolvedMode === "dark" ? "light" : "dark"} />;
 }
 
 export default function RootLayout() {
-  return (
-    <AppProviders>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="connect-wallet" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="role-select"
-          options={{ title: "Select Role", headerBackVisible: false }}
-        />
-        <Stack.Screen name="(farmer)" options={{ headerShown: false }} />
-        <Stack.Screen name="(partner)" options={{ headerShown: false }} />
-      </Stack>
-      <ThemedStatusBar />
-    </AppProviders>
-  );
+	return (
+		<AppProviders>
+			<Stack>
+				<Stack.Screen name="index" options={{ headerShown: false }} />
+				<Stack.Screen
+					name="connect-wallet"
+					options={{ headerShown: false }}
+				/>
+				<Stack.Screen
+					name="role-select"
+					options={{ headerShown: false }}
+				/>
+				<Stack.Screen
+					name="(farmer)"
+					options={{ headerShown: false }}
+				/>
+				<Stack.Screen
+					name="(partner)"
+					options={{ headerShown: false }}
+				/>
+			</Stack>
+			<ThemedStatusBar />
+		</AppProviders>
+	);
 }

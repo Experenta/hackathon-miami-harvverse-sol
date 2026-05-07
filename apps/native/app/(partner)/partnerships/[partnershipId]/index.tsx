@@ -58,6 +58,7 @@ export default function PartnershipDetailScreen() {
 			{/* Hero */}
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
+					showBack
 					eyebrow="Active position"
 					title={`Yield agreement ${partnership.lotCode}`}
 					subtitle="This position represents your active partnership with commercial and on-chain references."

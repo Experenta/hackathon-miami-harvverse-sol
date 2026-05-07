@@ -1,4 +1,5 @@
 export { ActionBar } from "./action-bar";
+export { BackButton } from "./back-button";
 export { Badge, type BadgeTone } from "./badge";
 export { Banner, type BannerTone } from "./banner";
 export { Button, type ButtonVariant } from "./button";

@@ -326,6 +326,7 @@ export default function ReservePartnershipScreen() {
 			<Screen scrollable>
 				<Animated.View entering={FadeInDown.duration(250)}>
 					<ScreenHeader
+						showBack
 						eyebrow="Opportunity reserved"
 						title="Reservation submitted"
 						subtitle="The partnership reservation was signed and linked to its pending on-chain record."
@@ -388,6 +389,7 @@ export default function ReservePartnershipScreen() {
 		<Screen scrollable>
 			<Animated.View entering={FadeInDown.duration(250)}>
 				<ScreenHeader
+					showBack
 					eyebrow="Opportunity confirmation"
 					title="Reserve partnership"
 					subtitle="Confirm the opportunity terms before signing the reservation transaction."
