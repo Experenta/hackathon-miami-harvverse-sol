@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Text, View } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
 import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useMobileWallet } from "@wallet-ui/react-native-kit";
 import type { Address } from "@solana/kit";
@@ -69,7 +74,7 @@ export default function PublishReviewScreen() {
   const wallet = account?.address?.toString() ?? "";
 
   useEffect(() => {
-    if (!wallet) {
+    if (!wallet || lot?.status !== "draft") {
       setHasFarmerProfile(null);
       setProfileCheckError(null);
       return;
@@ -97,7 +102,7 @@ export default function PublishReviewScreen() {
     return () => {
       isActive = false;
     };
-  }, [client.rpc, wallet, selectedNetwork.id]);
+  }, [client.rpc, wallet, selectedNetwork.id, lot?.status]);
 
   useEffect(() => {
     if (!lot || !lotCode || !wallet) return;
@@ -157,6 +162,13 @@ export default function PublishReviewScreen() {
 
   const handlePublish = useCallback(async () => {
     if (!hashes || !lot) return;
+    if (lot.status !== "draft") {
+      Alert.alert(
+        "Publish Unavailable",
+        `This lot is already ${formatLotStatus(lot.status)} and cannot be published again.`,
+      );
+      return;
+    }
     if (!hasFarmerProfile) {
       Alert.alert(
         "Farmer Profile Required",
@@ -255,64 +267,79 @@ export default function PublishReviewScreen() {
   const ticketDisplay = `$${(lot.ticketUsdcCents / 100).toLocaleString()}`;
   const farmerShare = `${lot.farmerShareBps / 100}%`;
   const partnerShare = `${lot.partnerShareBps / 100}%`;
+  const isDraft = lot.status === "draft";
   const isProfileReady = hasFarmerProfile === true;
+  const canPublish = isDraft && isProfileReady;
+  const formattedStatus = formatLotStatus(lot.status);
 
   if (publishedTx) {
     return (
       <Screen scrollable>
-        <ScreenHeader
-          eyebrow="Asset published"
-          title="Lot is now on-chain"
-          subtitle="The asset package was signed, recorded, and linked to its on-chain lot PDA."
-        />
-
-        <TxStatus state="confirmed" signature={ellipsify(publishedTx)} />
-
-        <Section
-          title="On-chain record"
-          description="Primary identifiers are retained, while digital references stay visually secondary."
-          aside={<Badge label="Recorded" tone="success" />}
-        >
-          <Card variant="success">
-            <DetailRow label="Lot code" value={lot.lotCode} />
-            <DetailRow
-              label="Lot PDA"
-              value={hashes ? ellipsify(hashes.lotPda.toString()) : "-"}
-              mono
-              valueTone="secondary"
-            />
-            <DetailRow
-              label="Transaction"
-              value={ellipsify(publishedTx)}
-              mono
-              valueTone="secondary"
-            />
-          </Card>
-        </Section>
-
-        <ActionBar>
-          <Button
-            title="Back to Dashboard"
-            variant="secondary"
-            onPress={() => router.back()}
+        <Animated.View entering={FadeInDown.duration(250)}>
+          <ScreenHeader
+            eyebrow="Asset published"
+            title="Lot is now on-chain"
+            subtitle="The asset package was signed, recorded, and linked to its on-chain lot PDA."
           />
-        </ActionBar>
+        </Animated.View>
+
+        <Animated.View entering={FadeIn.delay(50).duration(200)}>
+          <TxStatus state="confirmed" signature={ellipsify(publishedTx)} />
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(75).duration(250)}>
+          <Section
+            title="On-chain record"
+            aside={<Badge label="Recorded" tone="success" />}
+          >
+            <Card variant="success">
+              <DetailRow label="Lot code" value={lot.lotCode} />
+              <DetailRow
+                label="Lot PDA"
+                value={hashes ? ellipsify(hashes.lotPda.toString()) : "-"}
+                mono
+                valueTone="secondary"
+              />
+              <DetailRow
+                label="Transaction"
+                value={ellipsify(publishedTx)}
+                mono
+                valueTone="secondary"
+              />
+            </Card>
+          </Section>
+        </Animated.View>
+
+        <Animated.View entering={FadeInUp.delay(50).duration(200)}>
+          <ActionBar>
+            <Button
+              title="Back to Dashboard"
+              variant="secondary"
+              onPress={() => router.back()}
+            />
+          </ActionBar>
+        </Animated.View>
       </Screen>
     );
   }
 
   return (
     <Screen scrollable>
-      <ScreenHeader
-        eyebrow="Asset review"
-        title="Publish review"
-        subtitle="Review the lot package before converting this asset into an on-chain record."
-      />
+      {/* Hero */}
+      <Animated.View entering={FadeInDown.duration(250)}>
+        <ScreenHeader
+          eyebrow="Asset review"
+          title={isDraft ? "Publish review" : "Published record"}
+          subtitle={
+            isDraft
+              ? "Review the lot package before converting this asset into an on-chain record."
+              : `This lot is ${formattedStatus} and can no longer create a new on-chain record.`
+          }
+        />
+      </Animated.View>
 
-      <Section
-        description="This keeps the current publish logic, hashes, and wallet flow unchanged."
-        aside={<Badge label="Farmer flow" tone="brand" />}
-      >
+      {/* Status pills */}
+      <Animated.View entering={FadeIn.delay(50).duration(200)}>
         <View
           style={{
             flexDirection: "row",
@@ -322,180 +349,218 @@ export default function PublishReviewScreen() {
         >
           <StatusPill label={selectedNetwork.label} tone="accent" />
           <StatusPill
-            label={isProfileReady ? "Profile ready" : "Profile check"}
-            tone={isProfileReady ? "success" : "warning"}
+            label={formattedStatus}
+            tone={isDraft ? "farmer" : "success"}
           />
+          {isDraft ? (
+            <StatusPill
+              label={isProfileReady ? "Profile ready" : "Profile check"}
+              tone={isProfileReady ? "success" : "warning"}
+            />
+          ) : null}
+          <Badge label="Farmer flow" tone="brand" />
         </View>
-      </Section>
+      </Animated.View>
 
-      <Section
-        title="Asset snapshot"
-        description="Financial and share terms that will feed the publish instruction."
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: theme.spacing.sm,
-          }}
-        >
-          <MetricCard
-            label="Ticket value"
-            value={ticketDisplay}
-            helper={`${lot.areaManzanas} manzanas`}
-            eyebrow="Primary lot"
-            tone="farmer"
-            style={{ minWidth: 160 }}
-          />
-          <MetricCard
-            label="Farmer share"
-            value={farmerShare}
-            helper="Revenue participation"
-            tone="success"
-            style={{ minWidth: 160 }}
-          />
-          <MetricCard
-            label="Partner share"
-            value={partnerShare}
-            helper="Reserved for partner economics"
-            tone="partner"
-            style={{ minWidth: 160 }}
-          />
-        </View>
-      </Section>
-
-      <Section
-        title="Lot asset"
-        description="Human-readable fields stay primary before signing."
-        aside={<Badge label={lot.variety} tone="neutral" />}
-      >
-        <Card variant="selected">
-          <DetailRow label="Lot code" value={lot.lotCode} />
-          <DetailRow label="Farm" value={lot.farmName} />
-          <DetailRow label="Variety" value={lot.variety} />
-          <DetailRow label="Location" value={`${lot.region}, ${lot.country}`} />
-          <DetailRow
-            label="Coordinates"
-            value={`${lot.latitude}, ${lot.longitude}`}
-            valueTone="secondary"
-          />
-        </Card>
-      </Section>
-
-      <Section
-        title="Digital manifests"
-        description="Hashes, PDA, and derived identifiers remain visually secondary."
-        aside={<Badge label="Derived" tone="info" />}
-      >
-        {isComputing ? (
+      {!isDraft ? (
+        <Animated.View entering={FadeIn.delay(75).duration(200)}>
           <Banner
             tone="info"
-            title="Computing publish manifests"
-            description="Metadata, plan, media, and sensor manifests are being derived from the existing payloads."
-            accessory={<ActivityIndicator size="small" />}
+            title="Publishing locked"
+            description={`Only draft lots can be published. This lot is already ${formattedStatus}, so the review is read-only.`}
           />
-        ) : hashes ? (
-          <Card variant="muted">
+        </Animated.View>
+      ) : null}
+
+      {/* Asset snapshot */}
+      <Animated.View entering={FadeInUp.delay(75).duration(250)}>
+        <Section
+          title="Asset snapshot"
+          description="Financial and share terms that will feed the publish instruction."
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: theme.spacing.sm,
+            }}
+          >
+            <MetricCard
+              label="Ticket value"
+              value={ticketDisplay}
+              helper={`${lot.areaManzanas} manzanas`}
+              eyebrow="Primary lot"
+              tone="farmer"
+              style={{ minWidth: 160 }}
+            />
+            <MetricCard
+              label="Farmer share"
+              value={farmerShare}
+              helper="Revenue participation"
+              tone="success"
+              style={{ minWidth: 160 }}
+            />
+            <MetricCard
+              label="Partner share"
+              value={partnerShare}
+              helper="Reserved for partner economics"
+              tone="partner"
+              style={{ minWidth: 160 }}
+            />
+          </View>
+        </Section>
+      </Animated.View>
+
+      {/* Lot asset details */}
+      <Animated.View entering={FadeInUp.delay(50).duration(250)}>
+        <Section
+          title="Lot asset"
+          description="Human-readable fields stay primary before signing."
+          aside={<Badge label={lot.variety} tone="neutral" />}
+        >
+          <Card variant="selected">
+            <DetailRow label="Lot code" value={lot.lotCode} />
+            <DetailRow label="Farm" value={lot.farmName} />
+            <DetailRow label="Variety" value={lot.variety} />
             <DetailRow
-              label="Metadata hash"
-              value={ellipsify(hashes.metadataHashHex, 8)}
-              helper="Lot metadata manifest"
-              mono
-              valueTone="secondary"
+              label="Location"
+              value={`${lot.region}, ${lot.country}`}
             />
             <DetailRow
-              label="Plan hash"
-              value={ellipsify(hashes.planHashHex, 8)}
-              helper="Agronomic plan payload"
-              mono
-              valueTone="secondary"
-            />
-            <DetailRow
-              label="Media hash"
-              value={ellipsify(hashes.mediaManifestHashHex, 8)}
-              helper="Media manifest"
-              mono
-              valueTone="secondary"
-            />
-            <DetailRow
-              label="Sensor hash"
-              value={ellipsify(hashes.sensorManifestHashHex, 8)}
-              helper="Sensor manifest"
-              mono
-              valueTone="secondary"
-            />
-            <DetailRow
-              label="Lot PDA"
-              value={ellipsify(hashes.lotPda.toString())}
-              mono
+              label="Coordinates"
+              value={`${lot.latitude}, ${lot.longitude}`}
               valueTone="secondary"
             />
           </Card>
-        ) : (
-          <Banner
-            tone="error"
-            title="Failed to compute manifests"
-            description="The publish review could not derive the required hashes."
-          />
-        )}
-      </Section>
+        </Section>
+      </Animated.View>
 
-      <Section title="Publish readiness">
-        {hasFarmerProfile === null ? (
-          <Banner
-            tone="info"
-            title="Checking farmer profile"
-            description="Verifying that the connected wallet already owns the required FarmerProfile PDA."
-            accessory={<ActivityIndicator size="small" />}
-          />
-        ) : hasFarmerProfile === false ? (
-          <Banner
-            tone="warning"
-            title="Farmer profile required"
-            description="This wallet does not have the FarmerProfile PDA required by create_lot."
-          >
-            {profileCheckError ? (
+      {/* Digital manifests */}
+      <Animated.View entering={FadeInUp.delay(250).duration(250)}>
+        <Section
+          title="Digital manifests"
+          description="Hashes, PDA, and derived identifiers."
+          aside={<Badge label="Derived" tone="info" />}
+        >
+          {isComputing ? (
+            <Banner
+              tone="info"
+              title="Computing publish manifests"
+              description="Metadata, plan, media, and sensor manifests are being derived."
+              accessory={<ActivityIndicator size="small" />}
+            />
+          ) : hashes ? (
+            <Card variant="muted">
               <DetailRow
-                label="Check detail"
-                value={ellipsify(profileCheckError, 24)}
+                label="Metadata hash"
+                value={ellipsify(hashes.metadataHashHex, 8)}
+                helper="Lot metadata manifest"
                 mono
                 valueTone="secondary"
               />
-            ) : null}
-            <Button
-              title="Create Farmer Profile"
-              variant="accent"
-              onPress={() => router.push("/(farmer)/profile" as Href)}
+              <DetailRow
+                label="Plan hash"
+                value={ellipsify(hashes.planHashHex, 8)}
+                helper="Agronomic plan payload"
+                mono
+                valueTone="secondary"
+              />
+              <DetailRow
+                label="Media hash"
+                value={ellipsify(hashes.mediaManifestHashHex, 8)}
+                helper="Media manifest"
+                mono
+                valueTone="secondary"
+              />
+              <DetailRow
+                label="Sensor hash"
+                value={ellipsify(hashes.sensorManifestHashHex, 8)}
+                helper="Sensor manifest"
+                mono
+                valueTone="secondary"
+              />
+              <DetailRow
+                label="Lot PDA"
+                value={ellipsify(hashes.lotPda.toString())}
+                mono
+                valueTone="secondary"
+              />
+            </Card>
+          ) : (
+            <Banner
+              tone="error"
+              title="Failed to compute manifests"
+              description="The publish review could not derive the required hashes."
             />
-          </Banner>
-        ) : (
-          <Banner
-            tone="success"
-            title="Farmer profile verified"
-            description="The wallet is eligible to sign the publish transaction."
-          />
-        )}
-      </Section>
+          )}
+        </Section>
+      </Animated.View>
 
-      <ActionBar>
-        <Button
-          title="Sign and Publish On-Chain"
-          onPress={handlePublish}
-          disabled={isPending || !hashes || isComputing || !isProfileReady}
-          loading={isPending}
-        />
-        <Text
-          style={[
-            theme.typography.caption,
-            {
-              color: theme.colors.text.muted,
-              textAlign: "center",
-            },
-          ]}
-        >
-          The transaction path, mutations, and navigation remain unchanged.
-        </Text>
-      </ActionBar>
+      {/* Publish readiness */}
+      <Animated.View entering={FadeInUp.delay(75).duration(250)}>
+        <Section title="Publish readiness">
+          {!isDraft ? (
+            <Banner
+              tone="success"
+              title="Already published"
+              description="This lot has already left draft status, so no additional publish transaction is available."
+            />
+          ) : hasFarmerProfile === null ? (
+            <Banner
+              tone="info"
+              title="Checking farmer profile"
+              description="Verifying that the connected wallet already owns the required FarmerProfile PDA."
+              accessory={<ActivityIndicator size="small" />}
+            />
+          ) : hasFarmerProfile === false ? (
+            <Banner
+              tone="warning"
+              title="Farmer profile required"
+              description="This wallet does not have the FarmerProfile PDA required by create_lot."
+            >
+              {profileCheckError ? (
+                <DetailRow
+                  label="Check detail"
+                  value={ellipsify(profileCheckError, 24)}
+                  mono
+                  valueTone="secondary"
+                />
+              ) : null}
+              <Button
+                title="Create Farmer Profile"
+                variant="accent"
+                onPress={() => router.push("/(farmer)/profile" as Href)}
+              />
+            </Banner>
+          ) : (
+            <Banner
+              tone="success"
+              title="Farmer profile verified"
+              description="The wallet is eligible to sign the publish transaction."
+            />
+          )}
+        </Section>
+      </Animated.View>
+
+      {/* Action */}
+      <Animated.View entering={FadeInUp.delay(350).duration(200)}>
+        <ActionBar>
+          {isDraft ? (
+            <Button
+              title="Sign and Publish On-Chain"
+              onPress={handlePublish}
+              disabled={isPending || !hashes || isComputing || !canPublish}
+              loading={isPending}
+            />
+          ) : (
+            <Button
+              title="Back to Lot Details"
+              variant="secondary"
+              onPress={() => router.back()}
+            />
+          )}
+        </ActionBar>
+      </Animated.View>
 
       {isPending ? <TxStatus state="pending" /> : null}
       {txError ? (
@@ -503,4 +568,8 @@ export default function PublishReviewScreen() {
       ) : null}
     </Screen>
   );
+}
+
+function formatLotStatus(status: string) {
+  return status.replace(/_/g, " ");
 }

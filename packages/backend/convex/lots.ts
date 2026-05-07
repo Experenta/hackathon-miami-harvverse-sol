@@ -180,6 +180,12 @@ export const recordOnChainLot = mutation({
       throw new Error(`Lot not found: ${args.lotCode}`);
     }
 
+    if (lot.status !== "draft") {
+      throw new Error(
+        "Cannot record an on-chain lot that is not in draft status",
+      );
+    }
+
     await ctx.db.patch(lot._id, {
       lotPda: args.lotPda,
       updatedAt: Date.now(),
@@ -209,6 +215,10 @@ export const markPublished = mutation({
 
     if (!lot) {
       throw new Error(`Lot not found: ${args.lotCode}`);
+    }
+
+    if (lot.status !== "draft") {
+      throw new Error("Cannot publish a lot that is not in draft status");
     }
 
     const updates: Record<string, unknown> = {

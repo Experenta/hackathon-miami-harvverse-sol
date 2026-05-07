@@ -145,6 +145,12 @@ function buildGenerateDeploy(reason) {
     log(`build, generate, and deploy (${reason})`);
     run("pnpm", ["codama:js"]);
     run("pnpm", ["anchor:deploy:local"]);
+    run("node", [
+      "packages/solana-client/scripts/harvverse-config.mjs",
+      "--cluster",
+      "localnet",
+      "--send",
+    ]);
   } catch (error) {
     console.error(`[localnet] ${error.message}`);
   } finally {

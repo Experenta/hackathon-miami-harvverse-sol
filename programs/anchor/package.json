@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "anchor:build": "PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor build",
-    "anchor:deploy:local": "PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor deploy --provider.cluster localnet",
-    "anchor:test": "PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor test --skip-deploy",
+    "anchor:build": "NO_DNA=1 PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor build",
+    "anchor:deploy:devnet": "NO_DNA=1 PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor deploy --provider.cluster devnet",
+    "anchor:deploy:local": "NO_DNA=1 PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor deploy --provider.cluster localnet",
+    "anchor:test": "NO_DNA=1 PATH=\"$HOME/.local/share/solana/install/active_release/bin:$HOME/.cargo/bin:$HOME/.avm/bin:$PATH\" anchor test --skip-deploy",
     "clean": "rm -rf target .anchor"
   }
 }

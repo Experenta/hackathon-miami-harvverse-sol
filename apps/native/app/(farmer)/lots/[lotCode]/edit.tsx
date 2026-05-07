@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Text } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
+} from "react-native-reanimated";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
@@ -142,51 +147,61 @@ export default function EditLotScreen() {
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: isDraft ? "Edit Lot" : "Lot Details" }} />
-      <ScreenHeader
-        eyebrow="Farmer flow"
-        title={`${isDraft ? "Edit lot" : "Lot details"}: ${lot.lotCode}`}
-        subtitle={
-          isDraft
-            ? "You can still refine the draft before publish review."
-            : `This lot is already ${lot.status}. Fields are read-only.`
-        }
-        trailing={
-          <StatusPill label={lot.status} tone={isDraft ? "farmer" : "info"} />
-        }
-      />
 
-      {!isDraft ? (
-        <Banner
-          tone="info"
-          title="Read-only mode"
-          description="The lot remains viewable here, but only draft lots can be edited."
+      {/* Hero */}
+      <Animated.View entering={FadeInDown.duration(250)}>
+        <ScreenHeader
+          eyebrow="Farmer flow"
+          title={`${isDraft ? "Edit lot" : "Lot details"}: ${lot.lotCode}`}
+          subtitle={
+            isDraft
+              ? "Refine the draft before publish review."
+              : `This lot is already ${lot.status}. Fields are read-only.`
+          }
+          trailing={
+            <StatusPill label={lot.status} tone={isDraft ? "farmer" : "info"} />
+          }
         />
+      </Animated.View>
+
+      {/* Read-only notice */}
+      {!isDraft ? (
+        <Animated.View entering={FadeIn.delay(50).duration(200)}>
+          <Banner
+            tone="info"
+            title="Read-only mode"
+            description="The lot remains viewable here, but only draft lots can be edited or published."
+          />
+        </Animated.View>
       ) : null}
 
-      <LotForm
-        data={formData}
-        onChange={setFormData}
-        disabled={isSaving || !isDraft}
-        showAutofill={isDraft}
-      >
-        <ActionBar>
-          {isDraft ? (
+      {/* Form */}
+      <Animated.View entering={FadeInUp.delay(75).duration(250)}>
+        <LotForm
+          data={formData}
+          onChange={setFormData}
+          disabled={isSaving || !isDraft}
+          showAutofill={isDraft}
+        >
+          <ActionBar>
+            {isDraft ? (
+              <Button
+                title="Save Changes"
+                onPress={handleSave}
+                disabled={isSaving}
+                loading={isSaving}
+              />
+            ) : null}
             <Button
-              title="Save Changes"
-              onPress={handleSave}
-              disabled={isSaving}
-              loading={isSaving}
+              title={isDraft ? "Proceed to Publish" : "View Lot Record"}
+              variant={isDraft ? "accent" : "secondary"}
+              onPress={() =>
+                router.push(`/(farmer)/lots/${lotCode}/publish-review` as Href)
+              }
             />
-          ) : null}
-          <Button
-            title={isDraft ? "Proceed to Publish" : "View Publish Review"}
-            variant="accent"
-            onPress={() =>
-              router.push(`/(farmer)/lots/${lotCode}/publish-review` as Href)
-            }
-          />
-        </ActionBar>
-      </LotForm>
+          </ActionBar>
+        </LotForm>
+      </Animated.View>
     </Screen>
   );
 }

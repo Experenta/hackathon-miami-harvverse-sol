@@ -1,23 +1,31 @@
-# Anchor Hello World Program
+# Harvverse Anchor Program
 
-This directory contains the Anchor Rust workspace for the Solana program used by this Turborepo.
+This directory contains the Anchor Rust workspace for the Harvverse Solana
+program used by the web and native apps.
 
 The frontend apps do not deploy programs directly:
 
 - `programs/anchor` contains the Anchor program source and build output.
 - `packages/solana-client` contains shared Solana helpers and the Codama-generated TypeScript client.
-- `apps/web` imports the generated Hello World instruction from `@repo/solana-client`.
-- `apps/native` is set up to interact with deployed Solana programs through Solana Kit and Mobile Wallet Adapter.
+- `apps/web` and `apps/native` import helpers from `@repo/solana-client`.
 
-## Current Program
+## Canonical Program ID
 
-The included Anchor program is a simple Hello World contract. This checkout is currently synced to the local generated program keypair:
+Devnet and localnet intentionally use the same program ID:
 
 ```txt
 Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP
 ```
 
-Devnet is the default provider cluster for this Anchor workspace. A matching localnet program entry is also present for local validator work. The generated TypeScript client uses the same program ID, so app transactions only succeed on clusters where that ID has been deployed.
+This ID must stay synchronized in:
+
+- `programs/anchor/Anchor.toml`
+- `programs/anchor/programs/harvverse/src/lib.rs`
+- `packages/solana-client/src/generated/harvverse`
+
+The deployed app can switch between devnet and localnet by changing only the RPC
+cluster. Program state is still cluster-specific, so devnet and localnet each
+need their own initialized accounts.
 
 ## Repository Commands
 
@@ -25,96 +33,60 @@ Run these from the repository root:
 
 ```bash
 pnpm anchor:build
-pnpm anchor:test
 pnpm codama:js
-pnpm run setup
+pnpm build
 ```
 
-`pnpm run setup` runs the Turbo `codegen:program` task, which depends on `@repo/anchor-program#anchor:build`.
+Localnet development:
 
 ```bash
-turbo run codegen:program
+pnpm dev:local
 ```
+
+That command starts a local validator, builds, regenerates the TypeScript
+client, deploys the canonical program ID to localnet, initializes
+`ProgramConfig` if missing, launches the web app, and watches Anchor files.
+
+Devnet deployment:
+
+```bash
+pnpm anchor:deploy:devnet
+pnpm harvverse:config:devnet
+```
+
+`pnpm harvverse:config:devnet` is a dry-run by default. If simulation succeeds
+and you intend to create the devnet `ProgramConfig`, run:
+
+```bash
+pnpm harvverse:config:devnet --send
+```
+
+## Build Outputs
 
 The Anchor build writes the IDL to:
 
 ```txt
-programs/anchor/target/idl/vault.json
+programs/anchor/target/idl/harvverse.json
 ```
 
-Codama reads that IDL through the root `codama.json` file and regenerates the client at:
+Codama reads that IDL through the root `codama.json` file and regenerates the
+client at:
 
 ```txt
-packages/solana-client/src/generated/vault
+packages/solana-client/src/generated/harvverse
 ```
 
 ## Prerequisites
 
-Anchor and Solana CLI tools must be installed locally before running the program commands:
+Anchor and Solana CLI tools must be installed locally before running the program
+commands:
 
 - Anchor CLI
 - Solana CLI
 - Rust/Cargo
 - pnpm
 
-## Program Overview
-
-The program exposes one instruction:
-
-- **say_hello**: Requires the connected wallet as a signer and writes `Hello, world!` plus the signer address to the program logs.
-
-It does not create accounts, derive PDAs, or move SOL.
-
-## Deploying Your Own Program
-
-Use this flow when replacing the template devnet program with your own deployment.
-
-### 1. Generate a program keypair
-
-From the repository root:
-
-```bash
-cd programs/anchor
-solana-keygen new -o target/deploy/vault-keypair.json
-```
-
-### 2. Get the new program ID
-
-```bash
-solana address -k target/deploy/vault-keypair.json
-```
-
-### 3. Update program IDs
-
-Update the new program ID in:
-
-- `programs/anchor/Anchor.toml` under `[programs.devnet]`
-- `programs/anchor/Anchor.toml` under `[programs.localnet]` if you use local validator deployments
-- `programs/anchor/programs/vault/src/lib.rs` in `declare_id!("...")`
-
-### 4. Build and deploy
-
-From `programs/anchor`:
-
-```bash
-anchor build
-solana airdrop 2 --url devnet
-anchor deploy --provider.cluster devnet
-```
-
-### 5. Regenerate the TypeScript client
-
-Return to the repository root:
-
-```bash
-cd ../..
-pnpm codama:js
-pnpm build
-```
-
-Commit the updated generated files under `packages/solana-client/src/generated/vault` with the program changes.
-
-## Testing
+## Tests
 
 From the repository root:
 
@@ -122,8 +94,4 @@ From the repository root:
 pnpm anchor:test
 ```
 
-The tests use LiteSVM and live in:
-
-```txt
-programs/anchor/programs/vault/src/tests.rs
-```
+The tests use LiteSVM and live with the Harvverse program source.
