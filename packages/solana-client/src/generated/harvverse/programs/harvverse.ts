@@ -40,7 +40,7 @@ import {
 } from "../instructions";
 
 export const HARVVERSE_PROGRAM_ADDRESS =
-  "F7MaYgo1YqQdJPN41ZM4NzikhBYNAjQ21vMRoGfQWDu4" as Address<"F7MaYgo1YqQdJPN41ZM4NzikhBYNAjQ21vMRoGfQWDu4">;
+  "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP" as Address<"Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP">;
 
 export enum HarvverseAccount {
   FarmerProfile,
@@ -283,7 +283,7 @@ export function identifyHarvverseInstruction(
 }
 
 export type ParsedHarvverseInstruction<
-  TProgram extends string = "F7MaYgo1YqQdJPN41ZM4NzikhBYNAjQ21vMRoGfQWDu4",
+  TProgram extends string = "Bwedfg1JZvA5HfV5dCA2cyJhQf2Bkbop6K8eMdt1vKWP",
 > =
   | ({
       instructionType: HarvverseInstruction.CreateFarmerProfile;

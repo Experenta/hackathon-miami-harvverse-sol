@@ -7,7 +7,6 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
 
 // Import types from @convex-dev/agent
-import type { Agent } from "@convex-dev/agent";
 import { Agent as AgentClass, createTool } from "@convex-dev/agent";
 
 /**
