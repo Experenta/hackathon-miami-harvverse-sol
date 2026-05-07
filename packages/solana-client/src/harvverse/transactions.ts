@@ -6,32 +6,32 @@
  */
 
 import {
-	getRegisterRoleInstructionAsync,
-	getCreateFarmerProfileInstructionAsync,
-	getCreatePartnerProfileInstructionAsync,
-	getCreateLotInstructionAsync,
-	getPublishLotInstruction,
-	getUpdateLotHashesInstruction,
-	getReservePartnershipInstructionAsync,
-	getRecordSettlementInstructionAsync,
-	type RegisterRoleInstruction,
-	type CreateFarmerProfileInstruction,
-	type CreatePartnerProfileInstruction,
-	type CreateLotInstruction,
-	type PublishLotInstruction,
-	type UpdateLotHashesInstruction,
-	type ReservePartnershipInstruction,
-	type RecordSettlementInstruction,
+  getRegisterRoleInstructionAsync,
+  getCreateFarmerProfileInstructionAsync,
+  getCreatePartnerProfileInstructionAsync,
+  getCreateLotInstructionAsync,
+  getPublishLotInstruction,
+  getUpdateLotHashesInstruction,
+  getReservePartnershipInstructionAsync,
+  getRecordSettlementInstructionAsync,
+  type RegisterRoleInstruction,
+  type CreateFarmerProfileInstruction,
+  type CreatePartnerProfileInstruction,
+  type CreateLotInstruction,
+  type PublishLotInstruction,
+  type UpdateLotHashesInstruction,
+  type ReservePartnershipInstruction,
+  type RecordSettlementInstruction,
 } from "../generated/harvverse";
 import type {
-	RegisterRoleTxInput,
-	CreateFarmerProfileTxInput,
-	CreatePartnerProfileTxInput,
-	CreateLotTxInput,
-	PublishLotTxInput,
-	UpdateLotHashesTxInput,
-	ReservePartnershipTxInput,
-	RecordSettlementTxInput,
+  RegisterRoleTxInput,
+  CreateFarmerProfileTxInput,
+  CreatePartnerProfileTxInput,
+  CreateLotTxInput,
+  PublishLotTxInput,
+  UpdateLotHashesTxInput,
+  ReservePartnershipTxInput,
+  RecordSettlementTxInput,
 } from "./types";
 
 /**
@@ -39,12 +39,12 @@ import type {
  * The UserRole PDA is derived automatically from the wallet address.
  */
 export async function buildRegisterRoleTx(
-	input: RegisterRoleTxInput,
+  input: RegisterRoleTxInput,
 ): Promise<RegisterRoleInstruction> {
-	return getRegisterRoleInstructionAsync({
-		wallet: input.wallet,
-		role: input.role,
-	});
+  return getRegisterRoleInstructionAsync({
+    wallet: input.wallet,
+    role: input.role,
+  });
 }
 
 /**
@@ -52,13 +52,13 @@ export async function buildRegisterRoleTx(
  * The UserRole and FarmerProfile PDAs are derived automatically.
  */
 export async function buildCreateFarmerProfileTx(
-	input: CreateFarmerProfileTxInput,
+  input: CreateFarmerProfileTxInput,
 ): Promise<CreateFarmerProfileInstruction> {
-	return getCreateFarmerProfileInstructionAsync({
-		farmer: input.farmer,
-		displayNameHash: input.displayNameHash,
-		metadataUriHash: input.metadataUriHash,
-	});
+  return getCreateFarmerProfileInstructionAsync({
+    farmer: input.farmer,
+    displayNameHash: input.displayNameHash,
+    metadataUriHash: input.metadataUriHash,
+  });
 }
 
 /**
@@ -66,13 +66,13 @@ export async function buildCreateFarmerProfileTx(
  * The UserRole and PartnerProfile PDAs are derived automatically.
  */
 export async function buildCreatePartnerProfileTx(
-	input: CreatePartnerProfileTxInput,
+  input: CreatePartnerProfileTxInput,
 ): Promise<CreatePartnerProfileInstruction> {
-	return getCreatePartnerProfileInstructionAsync({
-		partner: input.partner,
-		displayNameHash: input.displayNameHash,
-		metadataUriHash: input.metadataUriHash,
-	});
+  return getCreatePartnerProfileInstructionAsync({
+    partner: input.partner,
+    displayNameHash: input.displayNameHash,
+    metadataUriHash: input.metadataUriHash,
+  });
 }
 
 /**
@@ -81,20 +81,20 @@ export async function buildCreatePartnerProfileTx(
  * The Lot PDA must be pre-computed and passed as `lotPda`.
  */
 export async function buildCreateLotTx(
-	input: CreateLotTxInput,
+  input: CreateLotTxInput,
 ): Promise<CreateLotInstruction> {
-	return getCreateLotInstructionAsync({
-		farmer: input.farmer,
-		lot: input.lotPda,
-		lotIdHash: input.lotIdHash,
-		metadataHash: input.metadataHash,
-		planHash: input.planHash,
-		mediaManifestHash: input.mediaManifestHash,
-		sensorManifestHash: input.sensorManifestHash,
-		ticketUsdcCents: input.ticketUsdcCents,
-		farmerShareBps: input.farmerShareBps,
-		partnerShareBps: input.partnerShareBps,
-	});
+  return getCreateLotInstructionAsync({
+    farmer: input.farmer,
+    lot: input.lotPda,
+    lotIdHash: input.lotIdHash,
+    metadataHash: input.metadataHash,
+    planHash: input.planHash,
+    mediaManifestHash: input.mediaManifestHash,
+    sensorManifestHash: input.sensorManifestHash,
+    ticketUsdcCents: input.ticketUsdcCents,
+    farmerShareBps: input.farmerShareBps,
+    partnerShareBps: input.partnerShareBps,
+  });
 }
 
 /**
@@ -102,12 +102,12 @@ export async function buildCreateLotTx(
  * The Lot PDA must be pre-computed and passed as `lotPda`.
  */
 export function buildPublishLotTx(
-	input: PublishLotTxInput,
+  input: PublishLotTxInput,
 ): PublishLotInstruction {
-	return getPublishLotInstruction({
-		farmer: input.farmer,
-		lot: input.lotPda,
-	});
+  return getPublishLotInstruction({
+    farmer: input.farmer,
+    lot: input.lotPda,
+  });
 }
 
 /**
@@ -116,16 +116,16 @@ export function buildPublishLotTx(
  * Pass null for hash fields that should not be updated.
  */
 export function buildUpdateLotHashesTx(
-	input: UpdateLotHashesTxInput,
+  input: UpdateLotHashesTxInput,
 ): UpdateLotHashesInstruction {
-	return getUpdateLotHashesInstruction({
-		farmer: input.farmer,
-		lot: input.lotPda,
-		metadataHash: input.metadataHash ?? null,
-		planHash: input.planHash ?? null,
-		mediaManifestHash: input.mediaManifestHash ?? null,
-		sensorManifestHash: input.sensorManifestHash ?? null,
-	});
+  return getUpdateLotHashesInstruction({
+    farmer: input.farmer,
+    lot: input.lotPda,
+    metadataHash: input.metadataHash ?? null,
+    planHash: input.planHash ?? null,
+    mediaManifestHash: input.mediaManifestHash ?? null,
+    sensorManifestHash: input.sensorManifestHash ?? null,
+  });
 }
 
 /**
@@ -133,13 +133,13 @@ export function buildUpdateLotHashesTx(
  * The UserRole, PartnerProfile, and Partnership PDAs are derived automatically.
  */
 export async function buildReservePartnershipTx(
-	input: ReservePartnershipTxInput,
+  input: ReservePartnershipTxInput,
 ): Promise<ReservePartnershipInstruction> {
-	return getReservePartnershipInstructionAsync({
-		partner: input.partner,
-		lot: input.lotPda,
-		termsHash: input.termsHash,
-	});
+  return getReservePartnershipInstructionAsync({
+    partner: input.partner,
+    lot: input.lotPda,
+    termsHash: input.termsHash,
+  });
 }
 
 /**
@@ -147,19 +147,19 @@ export async function buildReservePartnershipTx(
  * The ProgramConfig and SettlementReceipt PDAs are derived automatically.
  */
 export async function buildRecordSettlementTx(
-	input: RecordSettlementTxInput,
+  input: RecordSettlementTxInput,
 ): Promise<RecordSettlementInstruction> {
-	return getRecordSettlementInstructionAsync({
-		signer: input.signer,
-		partnership: input.partnershipPda,
-		lot: input.lotPda,
-		yieldQq: input.yieldQq,
-		pricePerLbCents: input.pricePerLbCents,
-		revenueUsdcCents: input.revenueUsdcCents,
-		costUsdcCents: input.costUsdcCents,
-		profitUsdcCents: input.profitUsdcCents,
-		farmerShareUsdcCents: input.farmerShareUsdcCents,
-		partnerShareUsdcCents: input.partnerShareUsdcCents,
-		settlementHash: input.settlementHash,
-	});
+  return getRecordSettlementInstructionAsync({
+    signer: input.signer,
+    partnership: input.partnershipPda,
+    lot: input.lotPda,
+    yieldQq: input.yieldQq,
+    pricePerLbCents: input.pricePerLbCents,
+    revenueUsdcCents: input.revenueUsdcCents,
+    costUsdcCents: input.costUsdcCents,
+    profitUsdcCents: input.profitUsdcCents,
+    farmerShareUsdcCents: input.farmerShareUsdcCents,
+    partnerShareUsdcCents: input.partnerShareUsdcCents,
+    settlementHash: input.settlementHash,
+  });
 }

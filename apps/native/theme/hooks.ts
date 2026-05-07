@@ -1,25 +1,25 @@
 import { useThemeContext } from "./provider";
 
 export function useTheme() {
-	return useThemeContext();
+  return useThemeContext();
 }
 
 export function useColors() {
-	return useThemeContext().theme.colors;
+  return useThemeContext().theme.colors;
 }
 
 export function useTypography() {
-	return useThemeContext().theme.typography;
+  return useThemeContext().theme.typography;
 }
 
 export function useSpacing() {
-	return useThemeContext().theme.spacing;
+  return useThemeContext().theme.spacing;
 }
 
 export function useRadius() {
-	return useThemeContext().theme.radius;
+  return useThemeContext().theme.radius;
 }
 
 export function useGradients() {
-	return useThemeContext().gradients;
+  return useThemeContext().gradients;
 }

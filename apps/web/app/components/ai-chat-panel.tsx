@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@havverse/backend/convex/_generated/api";
 
@@ -23,10 +23,16 @@ export function AiChatPanel({ lotCode, wallet, role }: AiChatPanelProps) {
   // Fetch messages when we have a threadId
   const messagesResult = useQuery(
     api.agentChat.listThreadMessages,
-    threadId ? { threadId, paginationOpts: { cursor: null, numItems: 50 } } : "skip",
+    threadId
+      ? { threadId, paginationOpts: { cursor: null, numItems: 50 } }
+      : "skip",
   );
 
-  const messages = messagesResult?.page ?? [];
+  const messagesPage = messagesResult?.page;
+  const messages = useMemo(
+    () => (messagesPage ?? []) as UIMessage[],
+    [messagesPage],
+  );
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -130,8 +136,8 @@ export function AiChatPanel({ lotCode, wallet, role }: AiChatPanelProps) {
             <p className="text-center text-xs text-gray-400">
               Ask me anything about lot{" "}
               <span className="font-mono font-semibold">{lotCode}</span>
-              <br />
-              I know about the farm, variety, partnerships, sensors, and more.
+              <br />I know about the farm, variety, partnerships, sensors, and
+              more.
             </p>
           </div>
         )}

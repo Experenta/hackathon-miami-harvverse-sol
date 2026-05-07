@@ -11,20 +11,20 @@
  * Arrays preserve their order; only object keys are sorted.
  */
 export function canonicalJson(obj: unknown): string {
-	if (obj === null || typeof obj !== "object") {
-		return JSON.stringify(obj);
-	}
+  if (obj === null || typeof obj !== "object") {
+    return JSON.stringify(obj);
+  }
 
-	if (Array.isArray(obj)) {
-		return "[" + obj.map(canonicalJson).join(",") + "]";
-	}
+  if (Array.isArray(obj)) {
+    return "[" + obj.map(canonicalJson).join(",") + "]";
+  }
 
-	const sortedKeys = Object.keys(obj as Record<string, unknown>).sort();
-	const pairs = sortedKeys.map((key) => {
-		const value = (obj as Record<string, unknown>)[key];
-		return JSON.stringify(key) + ":" + canonicalJson(value);
-	});
-	return "{" + pairs.join(",") + "}";
+  const sortedKeys = Object.keys(obj as Record<string, unknown>).sort();
+  const pairs = sortedKeys.map((key) => {
+    const value = (obj as Record<string, unknown>)[key];
+    return JSON.stringify(key) + ":" + canonicalJson(value);
+  });
+  return "{" + pairs.join(",") + "}";
 }
 
 /**
@@ -35,14 +35,14 @@ export function canonicalJson(obj: unknown): string {
  * polyfill or the built-in `crypto.subtle` in Node.js / modern browsers).
  */
 export async function computeManifestHash(
-	payload: Record<string, unknown>,
+  payload: Record<string, unknown>,
 ): Promise<Uint8Array> {
-	const json = canonicalJson(payload);
-	const encoder = new TextEncoder();
-	const data = encoder.encode(json);
+  const json = canonicalJson(payload);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(json);
 
-	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-	return new Uint8Array(hashBuffer);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(hashBuffer);
 }
 
 /**
@@ -50,10 +50,10 @@ export async function computeManifestHash(
  * Returns the hash as a lowercase hex string (64 characters).
  */
 export async function computeManifestHashHex(
-	payload: Record<string, unknown>,
+  payload: Record<string, unknown>,
 ): Promise<string> {
-	const bytes = await computeManifestHash(payload);
-	return Array.from(bytes)
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("");
+  const bytes = await computeManifestHash(payload);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }

@@ -17,14 +17,14 @@ import type { Address, TransactionSigner } from "@solana/kit";
  * TransactionSigner, but MWA handles signing externally.
  */
 export function createMwaSigner<T extends string = string>(
-	address: Address<T>,
+  address: Address<T>,
 ): TransactionSigner<T> {
-	return {
-		address,
-		signAndSendTransactions: async () => {
-			throw new Error(
-				"MWA signer should not be used for signing. Use sendTransactions from useMobileWallet instead.",
-			);
-		},
-	};
+  return {
+    address,
+    signAndSendTransactions: async () => {
+      throw new Error(
+        "MWA signer should not be used for signing. Use sendTransactions from useMobileWallet instead.",
+      );
+    },
+  };
 }

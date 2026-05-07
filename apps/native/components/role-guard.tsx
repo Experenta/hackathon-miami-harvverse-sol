@@ -5,8 +5,8 @@ import { useRole } from "@/features/role/use-role";
 import { LoadingScreen } from "@/components/loading-screen";
 
 interface RoleGuardProps extends PropsWithChildren {
-	/** The role required to access this route group. */
-	requiredRole: "farmer" | "partner";
+  /** The role required to access this route group. */
+  requiredRole: "farmer" | "partner";
 }
 
 /**
@@ -19,42 +19,42 @@ interface RoleGuardProps extends PropsWithChildren {
  * - Correct role → render children
  */
 export function RoleGuard({ requiredRole, children }: RoleGuardProps) {
-	const router = useRouter();
-	const { account } = useMobileWallet();
-	const { role, isLoading } = useRole();
+  const router = useRouter();
+  const { account } = useMobileWallet();
+  const { role, isLoading } = useRole();
 
-	useEffect(() => {
-		// Wallet disconnected
-		if (!account) {
-			router.replace("/connect-wallet" as Href);
-			return;
-		}
+  useEffect(() => {
+    // Wallet disconnected
+    if (!account) {
+      router.replace("/connect-wallet" as Href);
+      return;
+    }
 
-		if (isLoading) return;
+    if (isLoading) return;
 
-		// No role registered yet
-		if (role === null) {
-			router.replace("/role-select" as Href);
-			return;
-		}
+    // No role registered yet
+    if (role === null) {
+      router.replace("/role-select" as Href);
+      return;
+    }
 
-		// Wrong role — redirect to the correct dashboard
-		if (role !== requiredRole) {
-			const destination =
-				role === "farmer"
-					? ("/(farmer)/home" as Href)
-					: ("/(partner)/home" as Href);
-			router.replace(destination);
-		}
-	}, [account, isLoading, role, requiredRole, router]);
+    // Wrong role — redirect to the correct dashboard
+    if (role !== requiredRole) {
+      const destination =
+        role === "farmer"
+          ? ("/(farmer)/home" as Href)
+          : ("/(partner)/home" as Href);
+      router.replace(destination);
+    }
+  }, [account, isLoading, role, requiredRole, router]);
 
-	if (!account || isLoading) {
-		return <LoadingScreen />;
-	}
+  if (!account || isLoading) {
+    return <LoadingScreen />;
+  }
 
-	if (role !== requiredRole) {
-		return <LoadingScreen />;
-	}
+  if (role !== requiredRole) {
+    return <LoadingScreen />;
+  }
 
-	return <>{children}</>;
+  return <>{children}</>;
 }

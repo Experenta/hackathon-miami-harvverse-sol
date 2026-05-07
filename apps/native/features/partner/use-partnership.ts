@@ -7,16 +7,16 @@ import { useMobileWallet } from "@wallet-ui/react-native-kit";
  * Returns the partnership list and loading state.
  */
 export function usePartnerships() {
-	const { account } = useMobileWallet();
-	const wallet = account?.address?.toString() ?? "";
+  const { account } = useMobileWallet();
+  const wallet = account?.address?.toString() ?? "";
 
-	const partnerships = useQuery(
-		api.partnerships.listByPartner,
-		wallet ? { wallet } : "skip",
-	);
+  const partnerships = useQuery(
+    api.partnerships.listByPartner,
+    wallet ? { wallet } : "skip",
+  );
 
-	return {
-		partnerships: partnerships ?? [],
-		isLoading: partnerships === undefined,
-	};
+  return {
+    partnerships: partnerships ?? [],
+    isLoading: partnerships === undefined,
+  };
 }

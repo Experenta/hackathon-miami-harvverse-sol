@@ -7,23 +7,23 @@
 
 import type { Address, MaybeAccount } from "@solana/kit";
 import {
-	fetchMaybeUserRole,
-	fetchMaybeLot,
-	fetchMaybePartnership,
-	fetchMaybeFarmerProfile,
-	fetchMaybePartnerProfile,
-	type UserRole,
-	type Lot,
-	type Partnership,
-	type FarmerProfile,
-	type PartnerProfile,
+  fetchMaybeUserRole,
+  fetchMaybeLot,
+  fetchMaybePartnership,
+  fetchMaybeFarmerProfile,
+  fetchMaybePartnerProfile,
+  type UserRole,
+  type Lot,
+  type Partnership,
+  type FarmerProfile,
+  type PartnerProfile,
 } from "../generated/harvverse";
 import {
-	findUserRolePda,
-	findFarmerProfilePda,
-	findPartnerProfilePda,
-	findPartnershipPda,
-	deriveLotPda,
+  findUserRolePda,
+  findFarmerProfilePda,
+  findPartnerProfilePda,
+  findPartnershipPda,
+  deriveLotPda,
 } from "./pda";
 
 type Rpc = Parameters<typeof fetchMaybeUserRole>[0];
@@ -33,12 +33,12 @@ type Rpc = Parameters<typeof fetchMaybeUserRole>[0];
  * Returns null if the account does not exist.
  */
 export async function fetchUserRoleByWallet(
-	rpc: Rpc,
-	wallet: Address,
+  rpc: Rpc,
+  wallet: Address,
 ): Promise<MaybeAccount<UserRole> | null> {
-	const [pda] = await findUserRolePda({ farmer: wallet });
-	const account = await fetchMaybeUserRole(rpc, pda);
-	return account.exists ? account : null;
+  const [pda] = await findUserRolePda({ farmer: wallet });
+  const account = await fetchMaybeUserRole(rpc, pda);
+  return account.exists ? account : null;
 }
 
 /**
@@ -46,11 +46,11 @@ export async function fetchUserRoleByWallet(
  * Returns null if the account does not exist.
  */
 export async function fetchLotByPda(
-	rpc: Rpc,
-	lotPda: Address,
+  rpc: Rpc,
+  lotPda: Address,
 ): Promise<MaybeAccount<Lot> | null> {
-	const account = await fetchMaybeLot(rpc, lotPda);
-	return account.exists ? account : null;
+  const account = await fetchMaybeLot(rpc, lotPda);
+  return account.exists ? account : null;
 }
 
 /**
@@ -58,12 +58,12 @@ export async function fetchLotByPda(
  * Returns null if the account does not exist.
  */
 export async function fetchLotBySeeds(
-	rpc: Rpc,
-	farmer: Address,
-	lotIdHash: Uint8Array,
+  rpc: Rpc,
+  farmer: Address,
+  lotIdHash: Uint8Array,
 ): Promise<MaybeAccount<Lot> | null> {
-	const [pda] = await deriveLotPda(farmer, lotIdHash);
-	return fetchLotByPda(rpc, pda);
+  const [pda] = await deriveLotPda(farmer, lotIdHash);
+  return fetchLotByPda(rpc, pda);
 }
 
 /**
@@ -71,11 +71,11 @@ export async function fetchLotBySeeds(
  * Returns null if the account does not exist.
  */
 export async function fetchPartnershipByPda(
-	rpc: Rpc,
-	partnershipPda: Address,
+  rpc: Rpc,
+  partnershipPda: Address,
 ): Promise<MaybeAccount<Partnership> | null> {
-	const account = await fetchMaybePartnership(rpc, partnershipPda);
-	return account.exists ? account : null;
+  const account = await fetchMaybePartnership(rpc, partnershipPda);
+  return account.exists ? account : null;
 }
 
 /**
@@ -83,12 +83,12 @@ export async function fetchPartnershipByPda(
  * Returns null if the account does not exist.
  */
 export async function fetchPartnershipBySeeds(
-	rpc: Rpc,
-	lotPda: Address,
-	partner: Address,
+  rpc: Rpc,
+  lotPda: Address,
+  partner: Address,
 ): Promise<MaybeAccount<Partnership> | null> {
-	const [pda] = await findPartnershipPda({ lot: lotPda, partner });
-	return fetchPartnershipByPda(rpc, pda);
+  const [pda] = await findPartnershipPda({ lot: lotPda, partner });
+  return fetchPartnershipByPda(rpc, pda);
 }
 
 /**
@@ -96,12 +96,12 @@ export async function fetchPartnershipBySeeds(
  * Returns null if the account does not exist.
  */
 export async function fetchFarmerProfileByWallet(
-	rpc: Rpc,
-	farmer: Address,
+  rpc: Rpc,
+  farmer: Address,
 ): Promise<MaybeAccount<FarmerProfile> | null> {
-	const [pda] = await findFarmerProfilePda({ farmer });
-	const account = await fetchMaybeFarmerProfile(rpc, pda);
-	return account.exists ? account : null;
+  const [pda] = await findFarmerProfilePda({ farmer });
+  const account = await fetchMaybeFarmerProfile(rpc, pda);
+  return account.exists ? account : null;
 }
 
 /**
@@ -109,10 +109,10 @@ export async function fetchFarmerProfileByWallet(
  * Returns null if the account does not exist.
  */
 export async function fetchPartnerProfileByWallet(
-	rpc: Rpc,
-	partner: Address,
+  rpc: Rpc,
+  partner: Address,
 ): Promise<MaybeAccount<PartnerProfile> | null> {
-	const [pda] = await findPartnerProfilePda({ partner });
-	const account = await fetchMaybePartnerProfile(rpc, pda);
-	return account.exists ? account : null;
+  const [pda] = await findPartnerProfilePda({ partner });
+  const account = await fetchMaybePartnerProfile(rpc, pda);
+  return account.exists ? account : null;
 }

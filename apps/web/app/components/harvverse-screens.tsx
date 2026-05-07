@@ -2082,7 +2082,9 @@ export function CatalogScreen() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-mono text-sm font-bold">{lot.lotCode}</p>
+                      <p className="font-mono text-sm font-bold">
+                        {lot.lotCode}
+                      </p>
                       <h2 className="mt-1 font-semibold">{lot.farmName}</h2>
                     </div>
                     <p className="text-sm font-bold text-violet-700">
@@ -2193,7 +2195,10 @@ export function PartnerLotDetailScreen() {
                   value={`${lot.latitude}, ${lot.longitude}`}
                 />
                 <DetailRow label="Altitude" value={`${lot.altitudeMeters}m`} />
-                <DetailRow label="Area" value={`${lot.areaManzanas} manzanas`} />
+                <DetailRow
+                  label="Area"
+                  value={`${lot.areaManzanas} manzanas`}
+                />
                 <DetailRow
                   label="Ticket"
                   value={formatUsdCents(lot.ticketUsdcCents)}
@@ -2210,7 +2215,11 @@ export function PartnerLotDetailScreen() {
               <Card>
                 <h2 className="mb-2 font-bold">On-Chain Data</h2>
                 {lot.lotPda && (
-                  <DetailRow label="Lot PDA" value={ellipsify(lot.lotPda)} mono />
+                  <DetailRow
+                    label="Lot PDA"
+                    value={ellipsify(lot.lotPda)}
+                    mono
+                  />
                 )}
                 <DetailRow
                   label="Farmer Wallet"

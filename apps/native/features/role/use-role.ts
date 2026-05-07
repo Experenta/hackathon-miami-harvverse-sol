@@ -5,5 +5,5 @@ import { useRoleContext } from "./role-context";
  * The actual fetching is done inside RoleProvider (role-context.tsx).
  */
 export function useRole() {
-	return useRoleContext();
+  return useRoleContext();
 }

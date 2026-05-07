@@ -13,25 +13,23 @@ import { Agent as AgentClass, createTool } from "@convex-dev/agent";
  * Tool that fetches full lot context including farmer profile, partnership, and sensor data.
  */
 const getLotContext: any = createTool({
-	description:
-		"Fetches complete lot information including farmer profile, partnership details, agronomic plan, and sensor data for a given lot code.",
-	inputSchema: z.object({
-		lotCode: z
-			.string()
-			.describe("The Harvverse lot code, e.g. HV-HN-ZAF-L02"),
-	}),
-	execute: async (ctx: any, { lotCode }: { lotCode: string }): Promise<any> => {
-		const result = await ctx.runQuery(internal.agentQueries.getLotFull, {
-			lotCode,
-		});
-		return result;
-	},
+  description:
+    "Fetches complete lot information including farmer profile, partnership details, agronomic plan, and sensor data for a given lot code.",
+  inputSchema: z.object({
+    lotCode: z.string().describe("The Harvverse lot code, e.g. HV-HN-ZAF-L02"),
+  }),
+  execute: async (ctx: any, { lotCode }: { lotCode: string }): Promise<any> => {
+    const result = await ctx.runQuery(internal.agentQueries.getLotFull, {
+      lotCode,
+    });
+    return result;
+  },
 });
 
 const harvverseAgent: any = new AgentClass(components.agent, {
-	name: "Harvverse Assistant",
-	languageModel: anthropic("claude-sonnet-4-5-20250929"),
-	instructions: `You are the Harvverse AI Assistant, an expert in coffee lot management on the Solana blockchain.
+  name: "Harvverse Assistant",
+  languageModel: anthropic("claude-sonnet-4-5-20250929"),
+  instructions: `You are the Harvverse AI Assistant, an expert in coffee lot management on the Solana blockchain.
 
 You help farmers and partners understand their lots, partnerships, and agronomic data.
 
@@ -53,28 +51,28 @@ You speak in a friendly, professional tone. You can respond in Spanish or Englis
 You never sign transactions or make financial recommendations. You only explain verified on-chain and off-chain data.
 
 Keep responses concise but informative.`,
-	tools: { getLotContext },
+  tools: { getLotContext },
 });
 
 /**
  * Internal action that runs the agent generation (requires Node.js runtime).
  */
 export const generateResponse = internalAction({
-	args: {
-		threadId: v.string(),
-		promptMessageId: v.string(),
-		lotCode: v.string(),
-	},
-	handler: async (ctx: any, args: any): Promise<string> => {
-		const result: any = await harvverseAgent.generateText(
-			ctx,
-			{ threadId: args.threadId },
-			{
-				promptMessageId: args.promptMessageId,
-				system: `The user is currently viewing lot: ${args.lotCode}. Use the getLotContext tool with this lot code to answer their questions.`,
-			},
-		);
+  args: {
+    threadId: v.string(),
+    promptMessageId: v.string(),
+    lotCode: v.string(),
+  },
+  handler: async (ctx: any, args: any): Promise<string> => {
+    const result: any = await harvverseAgent.generateText(
+      ctx,
+      { threadId: args.threadId },
+      {
+        promptMessageId: args.promptMessageId,
+        system: `The user is currently viewing lot: ${args.lotCode}. Use the getLotContext tool with this lot code to answer their questions.`,
+      },
+    );
 
-		return result.text;
-	},
+    return result.text;
+  },
 });

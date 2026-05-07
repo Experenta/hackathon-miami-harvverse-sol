@@ -6,10 +6,10 @@ import { api } from "@havverse/backend/convex/_generated/api";
  * Returns the lot list and loading state.
  */
 export function useLotCatalog() {
-	const lots = useQuery(api.lots.listPublished);
+  const lots = useQuery(api.lots.listPublished);
 
-	return {
-		lots: lots ?? [],
-		isLoading: lots === undefined,
-	};
+  return {
+    lots: lots ?? [],
+    isLoading: lots === undefined,
+  };
 }

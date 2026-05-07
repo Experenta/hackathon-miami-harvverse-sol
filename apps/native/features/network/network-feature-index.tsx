@@ -8,33 +8,33 @@ import { Card, DetailRow, Section, StatusPill } from "@/components/ui";
 import { useTheme } from "@/theme";
 
 export function NetworkFeatureIndex() {
-	const { selectedNetwork, networks, setSelectedNetwork } = useNetwork();
-	const { theme } = useTheme();
+  const { selectedNetwork, networks, setSelectedNetwork } = useNetwork();
+  const { theme } = useTheme();
 
-	return (
-		<View style={{ gap: theme.spacing.lg }}>
-			<Section
-				title="Network"
-				description="Cluster selection and RPC diagnostics stay available here."
-				aside={<StatusPill label={selectedNetwork.label} tone="accent" />}
-			>
-				<Card variant="info">
-					<DetailRow
-						label="Current cluster"
-						value={selectedNetwork.label}
-						valueTone="secondary"
-					/>
-				</Card>
-			</Section>
-			<NetworkUiSelect
-				networks={networks}
-				selectedNetwork={selectedNetwork}
-				setSelectedNetwork={setSelectedNetwork}
-			/>
-			<Card variant="muted">
-				<NetworkFeatureGetVersion />
-				<NetworkFeatureGetGenesisHash />
-			</Card>
-		</View>
-	);
+  return (
+    <View style={{ gap: theme.spacing.lg }}>
+      <Section
+        title="Network"
+        description="Cluster selection and RPC diagnostics stay available here."
+        aside={<StatusPill label={selectedNetwork.label} tone="accent" />}
+      >
+        <Card variant="info">
+          <DetailRow
+            label="Current cluster"
+            value={selectedNetwork.label}
+            valueTone="secondary"
+          />
+        </Card>
+      </Section>
+      <NetworkUiSelect
+        networks={networks}
+        selectedNetwork={selectedNetwork}
+        setSelectedNetwork={setSelectedNetwork}
+      />
+      <Card variant="muted">
+        <NetworkFeatureGetVersion />
+        <NetworkFeatureGetGenesisHash />
+      </Card>
+    </View>
+  );
 }

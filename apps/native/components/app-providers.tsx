@@ -10,23 +10,23 @@ import { ThemeProvider } from "@/theme";
 const queryClient = new QueryClient();
 
 export function AppProviders({ children }: PropsWithChildren) {
-	return (
-		<ThemeProvider defaultMode="dark">
-			<QueryClientProvider client={queryClient}>
-				<ConvexClientProvider>
-					<NetworkProvider
-						networks={AppConfig.networks}
-						render={({ selectedNetwork }) => (
-							<MobileWalletProvider
-								cluster={selectedNetwork}
-								identity={AppConfig.identity}
-							>
-								<RoleProvider>{children}</RoleProvider>
-							</MobileWalletProvider>
-						)}
-					/>
-				</ConvexClientProvider>
-			</QueryClientProvider>
-		</ThemeProvider>
-	);
+  return (
+    <ThemeProvider defaultMode="dark">
+      <QueryClientProvider client={queryClient}>
+        <ConvexClientProvider>
+          <NetworkProvider
+            networks={AppConfig.networks}
+            render={({ selectedNetwork }) => (
+              <MobileWalletProvider
+                cluster={selectedNetwork}
+                identity={AppConfig.identity}
+              >
+                <RoleProvider>{children}</RoleProvider>
+              </MobileWalletProvider>
+            )}
+          />
+        </ConvexClientProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
 }

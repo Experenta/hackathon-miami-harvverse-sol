@@ -7,13 +7,13 @@ import { useMobileWallet } from "@wallet-ui/react-native-kit";
  * Returns the lot list and loading state.
  */
 export function useFarmerLots() {
-	const { account } = useMobileWallet();
-	const wallet = account?.address?.toString() ?? "";
+  const { account } = useMobileWallet();
+  const wallet = account?.address?.toString() ?? "";
 
-	const lots = useQuery(api.lots.listByFarmer, wallet ? { wallet } : "skip");
+  const lots = useQuery(api.lots.listByFarmer, wallet ? { wallet } : "skip");
 
-	return {
-		lots: lots ?? [],
-		isLoading: lots === undefined,
-	};
+  return {
+    lots: lots ?? [],
+    isLoading: lots === undefined,
+  };
 }
