@@ -133,7 +133,10 @@ export default defineSchema({
   })
     .index("by_partner", ["partnerWallet"])
     .index("by_farmer", ["farmerWallet"])
-    .index("by_lot", ["lotCode"]),
+    .index("by_lot", ["lotCode"])
+    .index("by_lot_and_partner", ["lotCode", "partnerWallet"])
+    .index("by_lot_and_farmer", ["lotCode", "farmerWallet"])
+    .index("by_partnership_pda", ["partnershipPda"]),
 
   milestoneProofs: defineTable({
     partnershipId: v.id("partnerships"),
@@ -158,7 +161,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_partnership", ["partnershipId"])
-    .index("by_partnership_and_milestone", ["partnershipId", "milestoneIndex"]),
+    .index("by_partnership_and_milestone", ["partnershipId", "milestoneIndex"])
+    .index("by_lot", ["lotCode"]),
 
   fundReleases: defineTable({
     partnershipId: v.id("partnerships"),
