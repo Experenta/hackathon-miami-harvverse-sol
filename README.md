@@ -67,26 +67,24 @@ A real farm. A real plan. A real Solana program. A real demo, in your hand.
 
 ## 🎬 Demo video
 
-> **Short demo (≤ 90 s):** the full faucet → fund → record proof → release flow.
+> **Short demo:** the full faucet → fund → record proof → release flow.
 
 <p align="center">
   <a href="https://youtu.be/7dxmFQjrGzM">
-    <img src="https://img.youtube.com/vi/7dxmFQjrGzM/maxresdefault.jpg" alt="Harvverse — 90s demo video" width="640" />
+    <img src="https://img.youtube.com/vi/7dxmFQjrGzM/maxresdefault.jpg" alt="Harvverse — demo video" width="640" />
   </a>
 </p>
 
 <p align="center">
-  ▶ <a href="https://youtu.be/7dxmFQjrGzM"><strong>Watch the 90-second demo on YouTube</strong></a>
+  ▶ <a href="https://youtu.be/7dxmFQjrGzM"><strong>Watch the demo on YouTube</strong></a>
 </p>
 
 > **Loom walkthrough (with audio):** repo tour, Anchor program walkthrough, and
 > live demo on devnet.
 
-<!-- TODO: replace with public Loom URL -->
-
-```
-[ insert Loom video link here ]
-```
+<p align="center">
+  ▶ <a href="https://www.loom.com/share/f1a3b3e0fa7e4cbfa5ffaf3184163346"><strong>Watch the Loom walkthrough</strong></a>
+</p>
 
 > **Pitch deck (Canva):**
 
